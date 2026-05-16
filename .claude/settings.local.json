@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(kill %1)",
+      "Bash(pkill -f \"vite\")",
+      "Bash(git -C /Users/scottweaver/Projects/port-a-2026 remote -v)",
+      "Bash(git -C /Users/scottweaver/Projects/port-a-2026 status)",
+      "Bash(git -C /Users/scottweaver/Projects/port-a-2026 log --oneline -5)",
+      "Bash(git *)"
     ]
   }
 }

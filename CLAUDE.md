@@ -99,27 +99,29 @@ When admin approves someone, the approved user's app re-routes from "pending" to
 - ✅ Sign-in screen renders correctly with countdown ticking
 - ✅ Tailwind compiles, Google G logo renders, beach gradient visible
 - ✅ SignInScreen visual tweaks applied (tighter title/card gap, more countdown breathing room, deeper background gradient — see commit history for specifics)
-- ⛔ Supabase project NOT yet created
-- ⛔ SQL migration NOT yet run
-- ⛔ Google OAuth NOT yet configured
+- ✅ Supabase project created (ref: `swqeikhtqwpiykovszjp`, region us-east-1)
+- ✅ Migration applied via `supabase db push` (CLI). Verified: 3 families, 74 checklist items
+- ✅ Google OAuth configured (Cloud Console client + Supabase provider wired); family test users added in Google Cloud Console "Audience" tab
+- ✅ Local end-to-end working: Scott signs in with Google → DB trigger auto-approves + auto-admin + auto-Weaver-family → dashboard renders with Trip + Admin tabs, countdown, weather/tide tiles, 0/74 checklist
+- ⛔ NOT yet pushed to GitHub
 - ⛔ NOT yet deployed to Vercel
 
-The placeholder `.env.local` (with `https://placeholder.supabase.co`) is what's loaded — Google sign-in won't work yet, but the rest of the app renders.
+`.env.local` holds real Supabase values (gitignored). Supabase **Site URL** is currently `http://localhost:5173`; this needs to change to the Vercel production URL post-deploy (and Vercel URL added to **Redirect URLs** allow list).
 
-### Next major step: Supabase + OAuth + Vercel deployment
+### Next major step: GitHub + Vercel deployment
 
-Follow `README.md` from "One-time setup" section. The big steps in order:
+Remaining work to get the app shareable with the family:
 
-1. Create Supabase project at supabase.com (~2 min). Save project URL + anon key.
-2. Run `supabase/migrations/0001_init.sql` in Supabase SQL Editor (~1 min). Verify with `select count(*) from public.families;` → 3 and `select count(*) from public.checklist_items;` → ~75.
-3. Set up Google OAuth — this is the longest step (~10 min). Google Cloud Console → OAuth consent screen (External, add family Gmail addresses as test users), then Credentials → OAuth client ID for Web application with the Supabase callback URL `https://xxxxx.supabase.co/auth/v1/callback`.
-4. Wire Google → Supabase: paste Client ID + Secret in Supabase Auth Providers, set Site URL to localhost initially.
-5. Update `.env.local` with real Supabase values.
-6. Test locally: sign in with `scott.t.weaver@gmail.com` — should auto-approve as admin.
-7. Push to GitHub, deploy to Vercel, set the two env vars in Vercel dashboard.
-8. Update Supabase Site URL and Redirect URLs to the Vercel production URL.
+1. Push to GitHub (no remote configured yet).
+2. Deploy to Vercel (link the repo, set `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` env vars).
+3. Update Supabase **Site URL** to the Vercel production URL, and add it to **Redirect URLs**.
+4. Update Google Cloud OAuth client: add Vercel URL to **Authorized JavaScript origins** (the redirect URI stays pointed at Supabase's `/auth/v1/callback`).
+5. Test sign-in on prod URL with Scott's account, then with another family member's account.
 
-Common gotchas: OAuth consent screen "Test users" list — without adding family emails, only Scott can sign in. Realtime replication occasionally needs a re-run of the migration to actually enable. Google avatar images need `referrerPolicy="no-referrer"` to load (already set).
+Gotchas (some still relevant, some carried forward):
+- Google OAuth consent screen is still in **Testing** status — only emails on the test-users list can sign in. Add more there as needed; no redeploy required.
+- Realtime replication: if a table doesn't push live updates, check Supabase → Database → Replication and ensure `checklist_items`, `contributions`, `profiles` are in the `supabase_realtime` publication.
+- Google avatar images need `referrerPolicy="no-referrer"` to load (already set in code).
 
 ### Things deliberately deferred / nice-to-haves
 
