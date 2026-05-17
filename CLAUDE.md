@@ -20,9 +20,10 @@ A real-time, collaborative trip dashboard for the Weaver family's Port Aransas v
 
 - **Vite + React 18 + TypeScript** (strict mode, `noUncheckedIndexedAccess`)
 - **Tailwind CSS 3** (NOT 4 — the v3 config story is more stable for now)
-- **Supabase**: Postgres + Auth (Google OAuth, PKCE flow) + Realtime
-- **Vercel** for deployment (target — not yet deployed)
-- **GitHub** for source (this repo)
+- **Supabase**: Postgres + Auth (Google OAuth + dev email/password, PKCE flow) + Realtime
+- **Vercel** for deployment, auto-deploys on push to `main`
+- **GitHub** for source (this repo). Release tags: `version/1.0` (Pack mode), `version/2.0` (offline tolerance + Online pill).
+- **Vitest** for unit tests — pure helpers only (cache, queue, auth logic, format). No React Testing Library.
 
 Project owner email is hardcoded as `scott.t.weaver@gmail.com` in two places: the SQL trigger (`handle_new_user`) and `src/lib/supabase.ts` as `OWNER_EMAIL`. Both auto-admin this user. Changing the owner requires updates in both spots.
 
@@ -90,18 +91,22 @@ Hook integration:
 - **`useChecklist.addCustomItem`** mints UUIDs client-side (`crypto.randomUUID()`) so the optimistic row matches the eventual server row even if queued offline. Schema accepts client-provided ids.
 
 UI surface:
-- **`TopBar`** shows a grey `Offline` pill when `navigator.onLine === false` and an amber `N` pending-writes badge whenever the queue is non-empty (with a spinner when online and currently flushing). Both come from `useOnline()` / `useQueueSize()` in `src/hooks/useOnline.ts`.
+- **`TopBar`** always shows a connection pill: emerald **Online** (Wifi icon) when `navigator.onLine === true`, grey **Offline** (WifiOff icon) when not. Plus an amber **N** pending-writes badge whenever the queue is non-empty (with a spinner when online and currently flushing). All driven by `useOnline()` / `useQueueSize()` in `src/hooks/useOnline.ts`. Persistent connection feedback is intentional — Scott specifically asked for the green "Online" state rather than the absence of an indicator.
 
-Auth resilience (Option B):
-- On reload, `useAuth` checks `session.expires_at`. If the cached session is expired AND we're offline, it skips straight to `signed-out` instead of rendering the dashboard with a token that will 401 every write. Sign-in requires network, so the user knows what to do.
+Auth resilience:
+- **Expired-session-on-reload (Option B):** `useAuth` checks `session.expires_at` on initial getSession. If the cached session is expired AND we're offline, it skips straight to `signed-out` rather than rendering the dashboard with a token that would 401 every write.
+- **Tab-focus-while-offline:** when Supabase's auto-refresh fails (no network), it emits a null session. We ignore null auth events while offline so the user stays where they were. Their cached profile carries the UI.
+- **Token refresh for same user:** when Supabase emits a new session object for the user we already have, we preserve the current stage (no spinner flash) and just update the session reference.
+- **Cached profile:** `useAuth` caches the user's own profile keyed `profile:<userId>`. Hydration on session-effect means the first paint shows the real user state, not a spinner. Cleared on `signOut`.
+- The three offline-sensitive decisions live as pure helpers in `src/lib/authLogic.ts` with regression tests in `authLogic.test.ts`.
 
 Conflict policy: last-write-wins for quantity items. With one person per family managing edits in practice, this is acceptable. If contention becomes real, the upgrade path is a server-side `adjust_quantity(item_id, family_id, delta)` RPC and sending deltas instead of absolutes.
 
-Test coverage: `cache.test.ts` (9 tests) and `queue.test.ts` (18 tests) plus `format.test.ts` (7). Run with `npm test` (one-shot) or `npm run test:watch`. Hook tests deliberately skipped — manual verification via DevTools offline toggle is the chosen approach.
+Test coverage: 49 unit tests across `cache.test.ts` (9), `queue.test.ts` (18), `authLogic.test.ts` (13), `format.test.ts` (7), classifyError (2). Run with `npm test` (one-shot) or `npm run test:watch`. Vitest uses `environment: 'node'` (no DOM). Full hook tests would need RTL+jsdom — deliberately skipped; the offline-sensitive logic is extracted into pure helpers (see `authLogic.ts`) and tested there instead.
 
 ### Realtime UX
 
-Optimistic updates with per-key debounced writes in `useChecklist` and `usePacking`. Quantity/task presses update local state via functional `setState` (so rapid clicks compound correctly), then a 250ms debounce per `(item, family)` key coalesces a burst into one upsert. On error, the row is refetched from the server to recover from divergence rather than rolled back (no single rollback target after coalescing). Pending writes flush on `visibilitychange === 'hidden'` and on hook unmount so a tab close mid-debounce doesn't drop data. Same pattern in `usePacking` for pack/unpack toggles, 200ms debounce.
+Optimistic updates with per-key debounced writes in `useChecklist` and `usePacking`. Quantity/task presses update local state via functional `setState` (so rapid clicks compound correctly), then a 250ms debounce per `(item, family)` key coalesces a burst into a single op. Same pattern in `usePacking` for pack/unpack toggles, 200ms debounce. After debounce, the op goes through the write queue (see Offline tolerance) — online: flushes immediately; offline: waits for reconnect. Pending debounce timers flush on `visibilitychange === 'hidden'` and on hook unmount so a tab close mid-debounce doesn't drop data.
 
 Realtime channels:
 - `profile:{userId}` (filtered to current user) — drives auth stage transitions
@@ -144,24 +149,21 @@ The semantic shift to watch: for task items, `contributions.done` on Trip was or
 
 ## Status & open work
 
-### Setup status as of last session
+### Release history
 
-- ✅ Project structure created on disk under `~/projects/port-a-2026/`
-- ✅ `npm install` succeeded
-- ✅ `npm run typecheck` passes clean
-- ✅ Dev server runs at `http://localhost:5173`
-- ✅ Sign-in screen renders correctly with countdown ticking
-- ✅ Tailwind compiles, Google G logo renders, beach gradient visible
-- ✅ SignInScreen visual tweaks applied (tighter title/card gap, more countdown breathing room, deeper background gradient — see commit history for specifics)
-- ✅ Supabase project created (ref: `swqeikhtqwpiykovszjp`, region us-east-1)
-- ✅ Migration applied via `supabase db push` (CLI). Verified: 3 families, 74 checklist items
-- ✅ Google OAuth configured (Cloud Console client + Supabase provider wired); family test users added in Google Cloud Console "Audience" tab
-- ✅ Local end-to-end working: Scott signs in with Google → DB trigger auto-approves + auto-admin + auto-Weaver-family → dashboard renders with Trip + Admin tabs, countdown, weather/tide tiles, 0/74 checklist
-- ✅ Pushed to GitHub: https://github.com/scottweaver/port-a-vacation (public repo, `main` branch)
-- ✅ Deployed to Vercel; Supabase Site URL + Redirect URLs updated to prod; Google Cloud OAuth Authorized JavaScript origin updated to prod
-- ✅ **LIVE — family members are actively using the app and adding checklist contributions** (launched 2026-05-16, T-9 days from trip)
+- **`version/1.0`** (launched 2026-05-16, commit `8757eea`) — initial release. Pack mode added on the same tag. Family members began using the app actively.
+- **`version/2.0`** (launched 2026-05-17, commit `e628181`) — offline tolerance + Online/Offline pill + local-Supabase dev environment + Vitest. Schema unchanged since v1.0; entirely client-side work.
 
-`.env.local` holds real Supabase values (gitignored). Production env vars `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` live in Vercel project settings.
+### Project state (current)
+
+- ✅ Supabase project (ref: `swqeikhtqwpiykovszjp`, region us-east-1) with migrations 0001–0004 applied.
+- ✅ Google OAuth wired (Cloud Console + Supabase). Test users added in Cloud Console "Audience" tab; consent screen still in **Testing** mode (we're under 100 known users, no need to verify).
+- ✅ Vercel auto-deploys on push to `main`. Production URL is the canonical app URL (see Vercel dashboard → Domains).
+- ✅ Local Supabase via the CLI for development (see "Local development" below).
+- ✅ Vitest with 49 passing unit tests on the pure-logic layer (cache, queue, auth logic, format helpers).
+- ✅ `npm run typecheck` clean, `npm test` clean.
+
+`.env.local` holds prod Supabase values (gitignored). Production env vars `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` live in Vercel project settings.
 
 ### Local development
 
@@ -188,6 +190,7 @@ The app is live and in use — future work in this repo is shipping changes to a
 - If a table doesn't push realtime updates, check Supabase → Database → Replication: `checklist_items`, `contributions`, `profiles` must be in the `supabase_realtime` publication.
 - Google avatar images need `referrerPolicy="no-referrer"` to load (already set in code).
 - Deployment auto-runs on push to `main` via Vercel's GitHub integration. Mind the family is using it — prefer PRs or local verification before pushing changes that touch UI or data flow.
+- **For risky work, branch off main and don't push until tested.** v2.0 was developed on an `offline-mode` branch precisely to avoid shipping half-tested offline behavior to active users. Hotfixes off a tagged release: `git checkout -b hotfix-X version/2.0`.
 
 ### Things deliberately deferred / nice-to-haves
 
