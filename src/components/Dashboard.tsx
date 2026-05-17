@@ -5,12 +5,13 @@ import { useFamilies } from '@/hooks/useFamilies';
 import { useChecklist } from '@/hooks/useChecklist';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useAdmin } from '@/hooks/useAdmin';
-import { CATEGORIES } from '@/lib/trip-data';
+import { CATEGORIES, BOOKED_ACTIVITIES } from '@/lib/trip-data';
 import TopBar from './TopBar';
 import CountdownCard from './CountdownCard';
 import WeatherCard from './WeatherCard';
 import TideCard from './TideCard';
 import DriveCard from './DriveCard';
+import BookedActivityCard from './BookedActivityCard';
 import ChecklistSection from './ChecklistSection';
 import PlacesSection from './PlacesSection';
 import InfoPanel from './InfoPanel';
@@ -58,9 +59,17 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
               contributions={checklist.contributions}
               families={families}
             />
-            <WeatherCard />
-            <TideCard />
-            <DriveCard />
+            <WeatherCard userId={session.user.id} />
+            <TideCard userId={session.user.id} />
+            <DriveCard userId={session.user.id} />
+
+            {BOOKED_ACTIVITIES.map((activity) => (
+              <BookedActivityCard
+                key={activity.bookingRef ?? activity.name}
+                activity={activity}
+                userId={session.user.id}
+              />
+            ))}
 
             {CATEGORIES.map((cat) => (
               <ChecklistSection
@@ -80,8 +89,8 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
               />
             ))}
 
-            <PlacesSection />
-            <InfoPanel />
+            <PlacesSection userId={session.user.id} />
+            <InfoPanel userId={session.user.id} />
 
             <footer className="text-center text-xs text-slate-400 py-6">
               Have a great trip! 🌊

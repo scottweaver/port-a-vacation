@@ -1,16 +1,24 @@
 import { Car } from 'lucide-react';
 import { DRIVE_STOPS, DRIVE_DISTANCE_MILES, DRIVE_DURATION_HOURS, DRIVE_ROUTE_SUMMARY } from '@/lib/trip-data';
+import CollapsibleCard from './CollapsibleCard';
 
-export default function DriveCard() {
+export default function DriveCard({ userId }: { userId: string }) {
   return (
-    <section className="bg-white rounded-2xl shadow p-5">
-      <h2 className="text-lg font-semibold text-slate-800 mb-1 flex items-center gap-2">
-        <Car size={20} className="text-slate-700" />
-        Drive: Austin → Port Aransas
-      </h2>
-      <p className="text-xs text-slate-500 mb-4">
-        ~{DRIVE_DURATION_HOURS} hours · ~{DRIVE_DISTANCE_MILES} miles · {DRIVE_ROUTE_SUMMARY}
-      </p>
+    <CollapsibleCard
+      storageKey="drive"
+      userId={userId}
+      header={
+        <>
+          <h2 className="text-lg font-semibold text-slate-800 mb-1 flex items-center gap-2">
+            <Car size={20} className="text-slate-700" />
+            Drive: Austin → Port Aransas
+          </h2>
+          <p className="text-xs text-slate-500">
+            ~{DRIVE_DURATION_HOURS} hours · ~{DRIVE_DISTANCE_MILES} miles · {DRIVE_ROUTE_SUMMARY}
+          </p>
+        </>
+      }
+    >
       <div className="space-y-2">
         {DRIVE_STOPS.map((stop, i) => (
           <div key={i} className="flex gap-3 items-start">
@@ -32,8 +40,6 @@ export default function DriveCard() {
           </div>
         ))}
       </div>
-    </section>
+    </CollapsibleCard>
   );
 }
-
-

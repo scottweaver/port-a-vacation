@@ -103,6 +103,38 @@ export const ACTIVITIES: Place[] = [
   { name: 'Port Aransas Tiki Boat Tours',  type: 'Shelling & sightseeing',rating: 4.9, reviewCount: 19,  phone: '(361) 205-7707', note: 'Captain Moon takes you shelling, dolphin watching, lighthouse views.' },
 ];
 
+export interface BookedActivity {
+  emoji: string;
+  name: string;
+  vendor: string;
+  bookingRef: string | null;
+  phone: string | null;
+  date: string;
+  startTime: string;
+  endTime: string;
+  party: string;
+  address: string;
+  parkingNote: string;
+  checkIn: string;
+}
+
+export const BOOKED_ACTIVITIES: BookedActivity[] = [
+  {
+    emoji: '🏴‍☠️',
+    name: 'Pirate Ship Cruise',
+    vendor: 'Red Dragon Pirate Cruises',
+    bookingRef: '347244120',
+    phone: '(361) 749-2469',
+    date: 'Wed May 27, 2026',
+    startTime: '11:30 AM',
+    endTime: '2:00 PM',
+    party: '7 adults, 2 children',
+    address: '440 W. Cotter Ave, Port Aransas, TX',
+    parkingNote: 'Park under the Red Dragon Pirate Cruises sign in the chained-off section. Pull all the way forward to the front of the lane or behind another vehicle.',
+    checkIn: 'Arrive no later than 11:30 AM — this is the scheduled cruise time, NOT the departure time. Check in to get your boarding pass, then wait on the dock until boarding begins.',
+  },
+];
+
 export interface InfoTile {
   icon: string;
   title: string;

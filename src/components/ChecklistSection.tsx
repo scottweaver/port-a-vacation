@@ -4,6 +4,7 @@ import type { ChecklistItem, Contribution, Family, Profile, TrackingType } from 
 import type { CategoryMeta } from '@/lib/trip-data';
 import { cx } from '@/lib/format';
 import ChecklistRow from './ChecklistRow';
+import CollapsibleCard from './CollapsibleCard';
 
 interface Props {
   category: CategoryMeta;
@@ -45,14 +46,19 @@ export default function ChecklistSection({
   }
 
   return (
-    <section id={`cat-${category.key}`} className="bg-white rounded-2xl shadow p-5 scroll-mt-20">
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-          <span>{category.emoji}</span> {category.title}
-        </h2>
-        <p className="text-xs text-slate-500 mt-0.5">{category.description}</p>
-      </div>
-
+    <CollapsibleCard
+      id={`cat-${category.key}`}
+      storageKey={`cat:${category.key}`}
+      userId={currentUserId}
+      header={
+        <>
+          <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            <span>{category.emoji}</span> {category.title}
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">{category.description}</p>
+        </>
+      }
+    >
       {items.length === 0 ? (
         <div className="text-sm text-slate-400 italic py-4 text-center">
           No items yet. Add one below to get started.
@@ -110,8 +116,6 @@ export default function ChecklistSection({
           </button>
         </div>
       </div>
-    </section>
+    </CollapsibleCard>
   );
 }
-
-

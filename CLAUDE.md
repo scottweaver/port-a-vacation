@@ -61,9 +61,17 @@ All four tables have RLS enabled. `is_approved()` and `is_admin()` are stable se
 
 ### Static trip data lives in code
 
-Weather forecast, tide chart, drive itinerary, restaurant/activity recommendations, info tiles — all in `src/lib/trip-data.ts`. These are NOT in the database. Rationale: not collaborative, doesn't change frequently, and keeps the app fully functional even if Supabase is down mid-trip.
+Weather forecast, tide chart, drive itinerary, restaurant/activity recommendations, info tiles, booked activities — all in `src/lib/trip-data.ts`. These are NOT in the database. Rationale: not collaborative, doesn't change frequently, and keeps the app fully functional even if Supabase is down mid-trip.
 
 If a future change wants real-time weather/tides, Open-Meteo (free, no key) and NOAA Port Aransas station are good free sources. Just don't make this a hard dependency.
+
+### Collapsible sections
+
+The major sections on the Trip tab (Weather, Tide, Drive, BookedActivity, Checklists, Places, Info) are collapsible. Implemented as `<CollapsibleCard>` (`src/components/CollapsibleCard.tsx`) — a thin wrapper that takes `header` and `children` slots plus a `storageKey` and `userId`. Each card was refactored to pass its title/subtitle as the header and the rest as the body. CountdownCard and ProgressCard are intentionally not collapsible (short headlines, no value in hiding).
+
+State persists in `localStorage` via `useCollapsedState` (`src/lib/useCollapsed.ts`), keyed `port-a:collapsed:<userId>:<sectionKey>`. Per-user-per-device — doesn't sync across devices and doesn't bleed between users on a shared device. Default is expanded.
+
+Anchor scrolling from ProgressCard category tiles preserves the `cat-<key>` id on the section element, so deep-links still work. They scroll to a collapsed section if it's collapsed — auto-expand-on-anchor was considered and deferred.
 
 ### Realtime UX
 
@@ -129,6 +137,8 @@ The app is live and in use — future work in this repo is shipping changes to a
 - A "trip is now active" mode that swaps countdown for "X hours left"
 - Reconsider-denied-users UI (`reconsider` action exists in `useAdmin` but no button)
 - **Make the "add custom item" form more discoverable.** The feature is already built (per-category inline form at the bottom of each `ChecklistSection`, with Count/Task toggle and delete affordance on user-added rows). Scott didn't notice it on the first prod look — it blends in below the item list. Lightest fix: add a top divider + small "Add a new item" label above the form. Stronger fix (more friction): collapse behind a "+ Add an item" button.
+- **Auto-expand collapsed sections when scrolled-to via anchor.** Clicking a category tile in `ProgressCard` jumps to its `ChecklistSection` via `#cat-<key>`. If that section is collapsed, you land on a closed card. A small effect listening for hashchange that flips the collapsed state for the targeted key would fix this.
+- **Theme the chevron color per card** in `CollapsibleCard`. Currently hardcoded to `text-slate-400`, which looks slightly off against the amber InfoPanel background. Add an optional `chevronClassName` prop or derive from a theme variant.
 
 ---
 

@@ -1,16 +1,24 @@
 import { Sun } from 'lucide-react';
 import { WEATHER_FORECAST, conditionIcon, conditionLabel } from '@/lib/trip-data';
+import CollapsibleCard from './CollapsibleCard';
 
-export default function WeatherCard() {
+export default function WeatherCard({ userId }: { userId: string }) {
   return (
-    <section className="bg-white rounded-2xl shadow p-5">
-      <h2 className="text-lg font-semibold text-slate-800 mb-1 flex items-center gap-2">
-        <Sun size={20} className="text-amber-500" />
-        Weather Forecast
-      </h2>
-      <p className="text-xs text-slate-500 mb-4">
-        5-day outlook for Port Aransas. Refresh closer to trip for live conditions.
-      </p>
+    <CollapsibleCard
+      storageKey="weather"
+      userId={userId}
+      header={
+        <>
+          <h2 className="text-lg font-semibold text-slate-800 mb-1 flex items-center gap-2">
+            <Sun size={20} className="text-amber-500" />
+            Weather Forecast
+          </h2>
+          <p className="text-xs text-slate-500">
+            5-day outlook for Port Aransas. Refresh closer to trip for live conditions.
+          </p>
+        </>
+      }
+    >
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {WEATHER_FORECAST.map((d) => {
           const Icon = conditionIcon[d.condition];
@@ -29,8 +37,6 @@ export default function WeatherCard() {
           );
         })}
       </div>
-    </section>
+    </CollapsibleCard>
   );
 }
-
-

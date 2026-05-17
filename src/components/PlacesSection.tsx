@@ -1,26 +1,37 @@
 import { MapPin, Phone, Star } from 'lucide-react';
 import { RESTAURANTS, ACTIVITIES, type Place } from '@/lib/trip-data';
+import CollapsibleCard from './CollapsibleCard';
 
-export default function PlacesSection() {
+export default function PlacesSection({ userId }: { userId: string }) {
   return (
     <>
-      <section className="bg-white rounded-2xl shadow p-5">
-        <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-          🍤 Top Family Restaurants
-        </h2>
+      <CollapsibleCard
+        storageKey="places:restaurants"
+        userId={userId}
+        header={
+          <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            🍤 Top Family Restaurants
+          </h2>
+        }
+      >
         <div className="grid md:grid-cols-2 gap-3">
           {RESTAURANTS.map((r) => <PlaceCard key={r.name} place={r} />)}
         </div>
-      </section>
+      </CollapsibleCard>
 
-      <section className="bg-white rounded-2xl shadow p-5">
-        <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-          🎢 Kid-Friendly Activities
-        </h2>
+      <CollapsibleCard
+        storageKey="places:activities"
+        userId={userId}
+        header={
+          <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            🎢 Kid-Friendly Activities
+          </h2>
+        }
+      >
         <div className="grid md:grid-cols-2 gap-3">
           {ACTIVITIES.map((a) => <PlaceCard key={a.name} place={a} />)}
         </div>
-      </section>
+      </CollapsibleCard>
     </>
   );
 }
@@ -56,5 +67,3 @@ function PlaceCard({ place }: { place: Place }) {
     </div>
   );
 }
-
-

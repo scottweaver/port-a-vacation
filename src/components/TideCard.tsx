@@ -1,16 +1,24 @@
 import { Waves } from 'lucide-react';
 import { TIDE_FORECAST } from '@/lib/trip-data';
+import CollapsibleCard from './CollapsibleCard';
 
-export default function TideCard() {
+export default function TideCard({ userId }: { userId: string }) {
   return (
-    <section className="bg-white rounded-2xl shadow p-5">
-      <h2 className="text-lg font-semibold text-slate-800 mb-1 flex items-center gap-2">
-        <Waves size={20} className="text-teal-600" />
-        Tide Chart
-      </h2>
-      <p className="text-xs text-slate-500 mb-4">
-        Low tide = best shelling & wider beach. Approximate — verify with NOAA before going out.
-      </p>
+    <CollapsibleCard
+      storageKey="tide"
+      userId={userId}
+      header={
+        <>
+          <h2 className="text-lg font-semibold text-slate-800 mb-1 flex items-center gap-2">
+            <Waves size={20} className="text-teal-600" />
+            Tide Chart
+          </h2>
+          <p className="text-xs text-slate-500">
+            Low tide = best shelling & wider beach. Approximate — verify with NOAA before going out.
+          </p>
+        </>
+      }
+    >
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="text-left text-xs text-slate-500 uppercase">
@@ -33,8 +41,6 @@ export default function TideCard() {
           </tbody>
         </table>
       </div>
-    </section>
+    </CollapsibleCard>
   );
 }
-
-
