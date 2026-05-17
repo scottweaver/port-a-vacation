@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, LogOut, Shield, Home, Users as UsersIcon, Luggage, WifiOff, RefreshCw } from 'lucide-react';
+import { ChevronDown, LogOut, Shield, Home, Users as UsersIcon, Luggage, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import type { Profile, Family } from '@/types/db';
 import { cx, firstName } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
@@ -51,9 +51,17 @@ export default function TopBar({
           </div>
 
           <div className="flex items-center gap-2">
-            {!online && (
+            {online ? (
               <span
-                className="bg-slate-700/40 text-white/90 rounded-md px-2 py-1 text-xs flex items-center gap-1 font-medium"
+                className="bg-emerald-500/90 text-white rounded-md px-2 py-1 text-xs flex items-center gap-1 font-medium"
+                title="Connected — changes sync immediately"
+              >
+                <Wifi size={12} />
+                <span className="hidden sm:inline">Online</span>
+              </span>
+            ) : (
+              <span
+                className="bg-slate-700/60 text-white/90 rounded-md px-2 py-1 text-xs flex items-center gap-1 font-medium"
                 title="No network — changes will sync when you reconnect"
               >
                 <WifiOff size={12} />

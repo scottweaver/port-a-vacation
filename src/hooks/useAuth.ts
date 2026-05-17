@@ -1,15 +1,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { cache } from '@/lib/cache';
+import {
+  isOfflineSignoutBlip,
+  preserveStageOnSessionChange,
+  shouldBounceOnProfileError,
+  stageForProfile,
+  type AuthStage,
+} from '@/lib/authLogic';
 import type { Profile } from '@/types/db';
 
-export type AuthStage =
-  | { kind: 'loading' }
-  | { kind: 'signed-out' }
-  | { kind: 'pending'; session: Session; profile: Profile }
-  | { kind: 'denied'; session: Session; profile: Profile }
-  | { kind: 'needs-family'; session: Session; profile: Profile }
-  | { kind: 'approved'; session: Session; profile: Profile };
+export type { AuthStage };
+
+const profileCacheKey = (userId: string) => `profile:${userId}`;
 
 export function useAuth() {
   const [stage, setStage] = useState<AuthStage>({ kind: 'loading' });
@@ -37,6 +41,7 @@ export function useAuth() {
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (isOfflineSignoutBlip(newSession, navigator.onLine)) return;
       setSession(newSession);
       if (!newSession) setStage({ kind: 'signed-out' });
     });
@@ -50,16 +55,23 @@ export function useAuth() {
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
-    setStage({ kind: 'loading' });
     const userId = session.user.id;
 
     function applyProfile(profile: Profile) {
-      if (!session) return;
-      if (profile.status === 'pending') setStage({ kind: 'pending', session, profile });
-      else if (profile.status === 'denied') setStage({ kind: 'denied', session, profile });
-      else if (!profile.family_id) setStage({ kind: 'needs-family', session, profile });
-      else setStage({ kind: 'approved', session, profile });
+      cache.set(profileCacheKey(userId), profile);
+      setStage(stageForProfile(profile, session!));
     }
+
+    // Preserve the existing stage if the session change is just a token
+    // refresh for the same user — otherwise hydrate from the cached profile
+    // if available, else show the loading spinner.
+    setStage((current) => {
+      const preserved = preserveStageOnSessionChange(current, session, userId);
+      if (preserved) return preserved;
+      const cached = cache.get<Profile>(profileCacheKey(userId));
+      if (cached) return stageForProfile(cached, session);
+      return { kind: 'loading' };
+    });
 
     async function loadProfile() {
       const { data, error } = await supabase
@@ -67,12 +79,14 @@ export function useAuth() {
 
       if (cancelled) return;
       if (error) {
+        if (!shouldBounceOnProfileError(navigator.onLine)) return;
         console.error('Failed to load profile:', error);
         setStage({ kind: 'signed-out' });
         return;
       }
       if (!data) {
-        setTimeout(loadProfile, 500);
+        // No profile yet (trigger may not have fired). Retry only if online.
+        if (navigator.onLine) setTimeout(loadProfile, 500);
         return;
       }
       applyProfile(data as Profile);
@@ -116,9 +130,8 @@ export function useAuth() {
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setStage({ kind: 'signed-out' });
-  }, []);
+    if (session) cache.remove(profileCacheKey(session.user.id));
+  }, [session]);
 
   return { stage, signInWithGoogle, signInWithEmail, signOut };
 }
-
-
