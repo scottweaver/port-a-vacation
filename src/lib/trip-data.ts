@@ -159,11 +159,13 @@ export interface CategoryMeta {
 }
 
 export const CATEGORIES: CategoryMeta[] = [
-  { key: 'beach',     title: 'Beach Essentials', emoji: '🏖️', description: 'Shared gear — how many of each across all families?',              scope: 'shared' },
-  { key: 'clothing',  title: 'Clothing',         emoji: '👕', description: 'Each family packs their own. Quantities reflect total items.',     scope: 'per-family' },
-  { key: 'car',       title: 'Car Prep',         emoji: '🚗', description: 'Each family checks off their own car before leaving Austin.',      scope: 'per-family' },
-  { key: 'house',     title: 'House Close-Up',   emoji: '🏠', description: 'Each family closes up their own house — everyone sees progress.',  scope: 'per-family' },
-  { key: 'documents', title: 'Documents & Misc', emoji: '📋', description: 'IDs, permits, cash, electronics.',                                  scope: 'shared' },
+  { key: 'beach',     title: 'Beach Essentials',     emoji: '🏖️', description: 'Shared gear — how many of each across all families?',              scope: 'shared' },
+  { key: 'clothing',  title: 'Clothing',             emoji: '👕', description: 'Each family packs their own. Quantities reflect total items.',     scope: 'per-family' },
+  { key: 'car',       title: 'Car Prep',             emoji: '🚗', description: 'Each family checks off their own car before leaving Austin.',      scope: 'per-family' },
+  { key: 'house',     title: 'House Close-Up',       emoji: '🏠', description: 'Each family closes up their own house — everyone sees progress.',  scope: 'per-family' },
+  { key: 'kitchen',   title: 'Kitchen',              emoji: '🍳', description: 'Cookware, utensils, pantry staples shared at the condo.',          scope: 'shared' },
+  { key: 'games',     title: 'Games & Entertainment',emoji: '🎲', description: 'Board games, cards, devices — anything for downtime.',             scope: 'shared' },
+  { key: 'documents', title: 'Documents & Misc',     emoji: '📋', description: 'IDs, permits, cash, electronics.',                                  scope: 'shared' },
 ];
 
 export const categoryByKey: Record<string, CategoryMeta> = Object.fromEntries(

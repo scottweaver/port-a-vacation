@@ -14,12 +14,13 @@ interface Props {
   onDelete: (itemId: string) => Promise<void>;
   currentUserId: string;
   myFamilyId: string | null;
+  isAdmin: boolean;
 }
 
 export default function ChecklistRow({
   item, families, profiles, familyById,
   getContribution, onAdjustQuantity, onToggleTask, onDelete,
-  myFamilyId,
+  myFamilyId, isAdmin,
 }: Props) {
   const [confirming, setConfirming] = useState(false);
 
@@ -73,7 +74,7 @@ export default function ChecklistRow({
           )}
         </div>
 
-        {!item.is_default && (
+        {(!item.is_default || isAdmin) && (
           <button
             onClick={() => (confirming ? onDelete(item.id) : setConfirming(true))}
             onBlur={() => setConfirming(false)}
@@ -81,7 +82,13 @@ export default function ChecklistRow({
               'opacity-0 group-hover:opacity-100 sm:opacity-100 p-1 rounded transition flex-shrink-0',
               confirming ? 'text-coral-600 bg-coral-50' : 'text-slate-300 hover:text-coral-500',
             )}
-            title={confirming ? 'Click again to confirm' : 'Remove'}
+            title={
+              confirming
+                ? 'Click again to confirm'
+                : item.is_default
+                  ? 'Remove (admin)'
+                  : 'Remove'
+            }
           >
             <X size={16} />
           </button>

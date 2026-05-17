@@ -68,7 +68,7 @@ export default function ProgressCard({ items, contributions, families }: Props) 
         />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 mt-4">
         {CATEGORIES.map((cat) => {
           const s = stats.byCategory[cat.key] ?? { total: 0, covered: 0 };
           return (

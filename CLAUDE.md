@@ -59,6 +59,8 @@ We considered and rejected: email approval workflow with Resend + Edge Functions
 
 All four tables have RLS enabled. `is_approved()` and `is_admin()` are stable security-definer helpers used in policies. The user-facing client uses the anon key and cannot escape RLS. The `updated_by = auth.uid()` check on contribution writes prevents spoofing "updated by Scott" from another user's session.
 
+**Delete policy on checklist_items** (post-migration `0002`): admins can delete any item including the 74 seeded defaults; non-admin approved users can delete only non-default items they themselves created. The UI mirrors this — `ChecklistRow` shows the X for `(!item.is_default || isAdmin)`. The pattern keeps the seed list curated while letting any family member trim items they added by mistake.
+
 ### Static trip data lives in code
 
 Weather forecast, tide chart, drive itinerary, restaurant/activity recommendations, info tiles, booked activities — all in `src/lib/trip-data.ts`. These are NOT in the database. Rationale: not collaborative, doesn't change frequently, and keeps the app fully functional even if Supabase is down mid-trip.

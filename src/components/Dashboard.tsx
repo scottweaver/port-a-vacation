@@ -86,6 +86,7 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
                 onDeleteItem={checklist.deleteCustomItem}
                 currentUserId={session.user.id}
                 myFamilyId={profile.family_id}
+                isAdmin={profile.is_admin}
               />
             ))}
 

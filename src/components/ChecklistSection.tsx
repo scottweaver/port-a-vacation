@@ -19,12 +19,13 @@ interface Props {
   onDeleteItem: (itemId: string) => Promise<void>;
   currentUserId: string;
   myFamilyId: string | null;
+  isAdmin: boolean;
 }
 
 export default function ChecklistSection({
   category, items, families, profiles, familyById,
   getContribution, onAdjustQuantity, onToggleTask, onAddItem, onDeleteItem,
-  currentUserId, myFamilyId,
+  currentUserId, myFamilyId, isAdmin,
 }: Props) {
   const [adding, setAdding] = useState(false);
   const [newLabel, setNewLabel] = useState('');
@@ -78,6 +79,7 @@ export default function ChecklistSection({
               onDelete={onDeleteItem}
               currentUserId={currentUserId}
               myFamilyId={myFamilyId}
+              isAdmin={isAdmin}
             />
           ))}
         </div>
