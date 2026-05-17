@@ -1,23 +1,23 @@
 #!/usr/bin/env node
 // Emits public/version.json with the current build id (short git SHA) and
-// timestamp. Runs before `vite build` so the JSON file is bundled into the
-// Vercel build output. The same SHA is injected into the bundle as
-// __BUILD_ID__ via vite.config.ts's `define`; the client compares the two
-// to detect when a new version is live.
+// app version. Runs before `vite build` so the JSON file ships with the
+// bundle; the client reads it at runtime via useVersionCheck to decide
+// whether a newer version is live.
 
-import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { writeFileSync, readFileSync, mkdirSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const target = resolve(__dirname, '..', 'public', 'version.json');
+const repoRoot = resolve(__dirname, '..');
+const target = resolve(repoRoot, 'public', 'version.json');
 
 function readSha() {
   // Vercel exposes VERCEL_GIT_COMMIT_SHA on every build.
   if (process.env.VERCEL_GIT_COMMIT_SHA) return process.env.VERCEL_GIT_COMMIT_SHA;
   try {
-    return execSync('git rev-parse HEAD', { cwd: resolve(__dirname, '..') })
+    return execSync('git rev-parse HEAD', { cwd: repoRoot })
       .toString()
       .trim();
   } catch {
@@ -25,15 +25,38 @@ function readSha() {
   }
 }
 
-function readAppVersion() {
+function tryDescribeTag() {
   try {
-    const tag = execSync('git describe --tags --abbrev=0', { cwd: resolve(__dirname, '..') })
+    const tag = execSync('git describe --tags --abbrev=0', { cwd: repoRoot, stdio: ['ignore', 'pipe', 'ignore'] })
       .toString()
       .trim();
-    return tag.replace(/^version\//, '');
-  } catch {
-    return 'dev';
-  }
+    if (tag) return tag.replace(/^version\//, '');
+  } catch { /* no tags reachable */ }
+  return null;
+}
+
+function tryFetchTagsAndDescribe() {
+  // Vercel's shallow clone omits tags. Fetch them so git describe can work.
+  // If the fetch fails (no network, no remote), this branch is a no-op.
+  try {
+    execSync('git fetch --tags origin --depth=1', { cwd: repoRoot, stdio: 'ignore' });
+  } catch { return null; }
+  return tryDescribeTag();
+}
+
+function tryPackageJson() {
+  try {
+    const pkg = JSON.parse(readFileSync(resolve(repoRoot, 'package.json'), 'utf-8'));
+    if (pkg.version) return String(pkg.version);
+  } catch { /* unreadable or malformed */ }
+  return null;
+}
+
+function readAppVersion() {
+  return tryDescribeTag()
+    ?? tryFetchTagsAndDescribe()
+    ?? tryPackageJson()
+    ?? 'dev';
 }
 
 const sha = readSha();
