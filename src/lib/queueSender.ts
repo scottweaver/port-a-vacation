@@ -72,6 +72,32 @@ async function execute(
       .eq('family_id', op.key.family_id);
     return error;
   }
+  if (op.table === 'messages' && op.op === 'insert') {
+    const { error } = await client
+      .from('messages')
+      .insert(op.payload);
+    return error;
+  }
+  if (op.table === 'messages' && op.op === 'updateContent') {
+    const { error } = await client
+      .from('messages')
+      .update({ content: op.payload.content })
+      .eq('id', op.key.id);
+    return error;
+  }
+  if (op.table === 'messages' && op.op === 'delete') {
+    const { error } = await client
+      .from('messages')
+      .delete()
+      .eq('id', op.key.id);
+    return error;
+  }
+  if (op.table === 'thread_reads' && op.op === 'upsert') {
+    const { error } = await client
+      .from('thread_reads')
+      .upsert(op.payload, { onConflict: 'item_id,user_id' });
+    return error;
+  }
   if (op.table === 'checklist_items' && op.op === 'insert') {
     const { error } = await client
       .from('checklist_items')

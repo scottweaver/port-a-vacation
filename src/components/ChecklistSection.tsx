@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus, Loader2, ChevronRight, ChevronDown, Eye } from 'lucide-react';
+import { Plus, Loader2, ChevronRight, ChevronDown, Eye, MessageCircle } from 'lucide-react';
 import type { ChecklistItem, Contribution, Family, Profile, TrackingType } from '@/types/db';
 import type { CategoryMeta } from '@/lib/trip-data';
 import { cx } from '@/lib/format';
@@ -22,6 +22,11 @@ interface Props {
   onDeleteItem: (itemId: string) => Promise<void>;
   onHide: (itemId: string) => void;
   onUnhide: (itemId: string) => void;
+  onOpenChat: (itemId: string) => void;
+  unreadByItem: Map<string, number>;
+  messageCountByItem: Map<string, number>;
+  unreadCategory: number;
+  onJumpInCategory: () => void;
   currentUserId: string;
   myFamilyId: string | null;
   isAdmin: boolean;
@@ -31,6 +36,7 @@ export default function ChecklistSection({
   category, items, families, profiles, familyById, hidden,
   getContribution, onAdjustQuantity, onToggleTask, onClaim, onUnclaim,
   onAddItem, onDeleteItem, onHide, onUnhide,
+  onOpenChat, unreadByItem, messageCountByItem, unreadCategory, onJumpInCategory,
   currentUserId, myFamilyId, isAdmin,
 }: Props) {
   const [adding, setAdding] = useState(false);
@@ -67,8 +73,28 @@ export default function ChecklistSection({
       userId={currentUserId}
       header={
         <>
-          <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2 flex-wrap">
             <span>{category.emoji}</span> {category.title}
+            {unreadCategory > 0 && (
+              <span
+                role="button"
+                tabIndex={0}
+                aria-label={`Jump to next unread message in ${category.title}`}
+                onClick={(e) => { e.stopPropagation(); onJumpInCategory(); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onJumpInCategory();
+                  }
+                }}
+                className="bg-coral-500 hover:bg-coral-600 text-white text-xs font-bold rounded-full px-1.5 py-0.5 leading-none flex items-center gap-1 tabular-nums cursor-pointer transition"
+                title={`${unreadCategory} unread message${unreadCategory === 1 ? '' : 's'} — jump to the next one`}
+              >
+                <MessageCircle size={11} />
+                {unreadCategory}
+              </span>
+            )}
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">{category.description}</p>
         </>
@@ -98,6 +124,9 @@ export default function ChecklistSection({
               onUnclaim={onUnclaim}
               onDelete={onDeleteItem}
               onHide={onHide}
+              onOpenChat={onOpenChat}
+              unreadCount={unreadByItem.get(item.id) ?? 0}
+              messageCount={messageCountByItem.get(item.id) ?? 0}
               currentUserId={currentUserId}
               myFamilyId={myFamilyId}
               isAdmin={isAdmin}

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useCollapsedState } from '@/lib/useCollapsed';
 import { cx } from '@/lib/format';
@@ -25,6 +25,18 @@ export default function CollapsibleCard({
   children,
 }: Props) {
   const [collapsed, setCollapsed] = useCollapsedState(storageKey, userId, defaultCollapsed);
+
+  // Expand programmatically when a `collapsible:expand` event fires for this
+  // storageKey. Used by the "jump to next unread message" affordance so
+  // collapsed categories open before we scroll to the target item.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ storageKey?: string }>).detail;
+      if (detail?.storageKey === storageKey) setCollapsed(false);
+    };
+    window.addEventListener('collapsible:expand', handler);
+    return () => window.removeEventListener('collapsible:expand', handler);
+  }, [storageKey, setCollapsed]);
 
   return (
     <section id={id} className={className ?? DEFAULT_CLASSNAME}>

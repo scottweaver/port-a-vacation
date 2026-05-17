@@ -73,6 +73,13 @@ export function useAuth() {
       return { kind: 'loading' };
     });
 
+    // Retry up to a few times in case the handle_new_user trigger hasn't
+    // landed the profile row yet. Capped so a stale JWT (referencing a user
+    // whose profile no longer exists — e.g. after a local db reset) doesn't
+    // hammer the network with infinite 500ms retries.
+    const MAX_PROFILE_RETRIES = 3;
+    let profileAttempts = 0;
+
     async function loadProfile() {
       const { data, error } = await supabase
         .from('profiles').select('*').eq('id', userId).maybeSingle();
@@ -85,7 +92,16 @@ export function useAuth() {
         return;
       }
       if (!data) {
-        // No profile yet (trigger may not have fired). Retry only if online.
+        profileAttempts++;
+        if (profileAttempts >= MAX_PROFILE_RETRIES) {
+          // Profile genuinely doesn't exist for this JWT. Either the trigger
+          // is broken, or the JWT references a user that's been deleted.
+          // Sign them out so they can re-authenticate cleanly.
+          console.warn('Profile not found after retries — signing out');
+          await supabase.auth.signOut();
+          setStage({ kind: 'signed-out' });
+          return;
+        }
         if (navigator.onLine) setTimeout(loadProfile, 500);
         return;
       }

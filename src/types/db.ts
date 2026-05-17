@@ -57,4 +57,25 @@ export interface HiddenItem {
   hidden_at: string;
 }
 
+export interface Message {
+  id: string;
+  item_id: string;
+  author_id: string;
+  content: string;
+  created_at: string;
+  edited_at: string | null;
+}
+
+// Same shape minus `content` — what useConversations loads eagerly on page
+// load to power per-item unread counts and the chat-icon affordance without
+// pulling every message body. Content is fetched on demand when a thread
+// modal opens.
+export type MessageMeta = Omit<Message, 'content'>;
+
+export interface ThreadRead {
+  item_id: string;
+  user_id: string;
+  last_read_at: string;
+}
+
 

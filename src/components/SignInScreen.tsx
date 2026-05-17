@@ -8,6 +8,15 @@ interface Props {
   onDevSignIn?: (email: string, password: string) => Promise<void>;
 }
 
+// Mirror of scripts/seed-local-users.sh. Keep these in sync when adding /
+// renaming test users.
+const DEV_USERS: Array<{ label: string; email: string; password: string; family: string }> = [
+  { label: 'Scott (admin)', email: 'scott.t.weaver@gmail.com', password: 'devdev123', family: 'Weavers' },
+  { label: 'Weaver 2',      email: 'weaver-2@test.local',      password: 'dev',       family: 'Weavers' },
+  { label: 'Ramirez',       email: 'ramirez@test.local',       password: 'dev',       family: 'Ramirezes' },
+  { label: 'Titsworth',     email: 'titsworth@test.local',     password: 'dev',       family: 'Titsworths' },
+];
+
 export default function SignInScreen({ onSignIn, onDevSignIn }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,34 +85,63 @@ export default function SignInScreen({ onSignIn, onDevSignIn }: Props) {
         </div>
 
         {import.meta.env.DEV && onDevSignIn && (
-          <form onSubmit={handleDev} className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+          <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
             <div className="text-xs font-medium text-amber-900 uppercase tracking-wide">
               Dev sign-in (local only)
             </div>
-            <input
-              type="email"
-              value={devEmail}
-              onChange={(e) => setDevEmail(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-amber-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
-              placeholder="email"
-              autoComplete="email"
-            />
-            <input
-              type="password"
-              value={devPassword}
-              onChange={(e) => setDevPassword(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-amber-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
-              placeholder="password"
-              autoComplete="current-password"
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full px-3 py-1.5 text-sm font-medium bg-amber-400 hover:bg-amber-300 text-amber-900 rounded transition disabled:opacity-50"
-            >
-              Sign in (dev)
-            </button>
-          </form>
+
+            <div className="flex flex-wrap gap-1">
+              {DEV_USERS.map((u) => (
+                <button
+                  key={u.email}
+                  type="button"
+                  disabled={loading}
+                  onClick={async () => {
+                    setDevEmail(u.email);
+                    setDevPassword(u.password);
+                    setError(null);
+                    setLoading(true);
+                    try {
+                      await onDevSignIn(u.email, u.password);
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : 'Dev sign-in failed.');
+                      setLoading(false);
+                    }
+                  }}
+                  className="px-2 py-1 text-xs font-medium bg-white border border-amber-200 text-amber-900 rounded hover:bg-amber-100 transition disabled:opacity-50"
+                  title={`${u.email} · ${u.family}`}
+                >
+                  {u.label}
+                </button>
+              ))}
+            </div>
+
+            <form onSubmit={handleDev} className="space-y-2">
+              <input
+                type="email"
+                value={devEmail}
+                onChange={(e) => setDevEmail(e.target.value)}
+                className="w-full px-2 py-1.5 text-sm border border-amber-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                placeholder="email"
+                autoComplete="email"
+              />
+              <input
+                type="password"
+                value={devPassword}
+                onChange={(e) => setDevPassword(e.target.value)}
+                className="w-full px-2 py-1.5 text-sm border border-amber-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                placeholder="password"
+                autoComplete="current-password"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full px-3 py-1.5 text-sm font-medium bg-amber-400 hover:bg-amber-300 text-amber-900 rounded transition disabled:opacity-50"
+              >
+                Sign in (dev)
+              </button>
+            </form>
+          </div>
         )}
 
         <p className="text-center text-xs text-slate-400 mt-6">

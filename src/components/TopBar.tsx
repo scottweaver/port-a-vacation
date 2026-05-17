@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, LogOut, Shield, Home, Users as UsersIcon, Luggage, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { ChevronDown, LogOut, Shield, Home, Users as UsersIcon, Luggage, Wifi, WifiOff, RefreshCw, MessageCircle } from 'lucide-react';
 import type { Profile, Family } from '@/types/db';
 import { cx, firstName } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
@@ -9,6 +9,8 @@ interface Props {
   profile: Profile;
   families: Family[];
   pendingCount: number;
+  unreadMessages: number;
+  onJumpToUnread: () => void;
   currentTab: 'trip' | 'admin';
   onTabChange: (t: 'trip' | 'admin') => void;
   onPackMode: () => void;
@@ -16,7 +18,8 @@ interface Props {
 }
 
 export default function TopBar({
-  profile, families, pendingCount, currentTab, onTabChange, onPackMode, onSignOut,
+  profile, families, pendingCount, unreadMessages, onJumpToUnread,
+  currentTab, onTabChange, onPackMode, onSignOut,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -76,6 +79,17 @@ export default function TopBar({
                 <RefreshCw size={12} className={online ? 'animate-spin' : ''} />
                 <span>{pendingWrites}</span>
               </span>
+            )}
+            {unreadMessages > 0 && (
+              <button
+                type="button"
+                onClick={onJumpToUnread}
+                className="bg-coral-500 hover:bg-coral-600 text-white rounded-md px-2 py-1 text-xs flex items-center gap-1 font-medium tabular-nums transition"
+                title={`${unreadMessages} unread message${unreadMessages === 1 ? '' : 's'} — jump to the next one`}
+              >
+                <MessageCircle size={12} />
+                <span>{unreadMessages > 99 ? '99+' : unreadMessages}</span>
+              </button>
             )}
             {profile.is_admin && (
               <div className="flex bg-white/10 rounded-lg p-0.5 text-sm">

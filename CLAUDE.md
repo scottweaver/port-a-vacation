@@ -41,6 +41,7 @@ We deliberately did NOT do per-user lists. Instead:
 - **`contributions`** are per-(item, family). Composite PK `(item_id, family_id)`. Quantity items use `quantity` column; task items use `done` boolean. **Claim items** are single-provider: exactly zero or one contribution row exists per item, with `done = true`. Enforced at the application layer (`useChecklist.claimItem` deletes other contributions then upserts; `unclaimItem` deletes all). RLS already permits the delete; no per-table constraint added because the trip's 8 users make race-window collisions negligible.
 - **`packing_status`** (added in migration `0004`) is **family-private** — per-(item, family) with composite PK `(item_id, family_id)`, but RLS scopes both reads AND writes to the user's own family. Other families literally cannot see your packing progress. Absent row = unpacked, present row = packed. Pack is INSERT (via supabase upsert with `ignoreDuplicates: true` so no UPDATE policy needed); unpack is DELETE. Drives the Pack mode UI.
 - **`hidden_items`** (added in migration `0005`) is **family-private** — same shape and family-scoped RLS as `packing_status`. Absent row = visible for this family; present row = hidden. Drives the per-category "Hidden items" subsection in `ChecklistSection` (default collapsed, shown only when N > 0). PackView also filters hidden items so hide-everywhere is the consistent UX.
+- **`messages`** and **`thread_reads`** (added in migration `0006`) drive per-item conversation threads. `messages(id, item_id, author_id, content, created_at, edited_at)` is global-read (anyone approved can see any thread), but authors can only edit/delete their own. `thread_reads(item_id, user_id, last_read_at)` is self-only RLS — it's how each user tracks where they left off so unread badges work. Absent thread_reads row = "never read" = all messages count as unread.
 
 **Why:** packing is family-scoped in practice. "Did Scott bring sunscreen" is the wrong question — "did anyone bring enough sunscreen" is right. Each family edits their own row but anyone can edit anyone's (collaborative — Scott's wife can bump the Weaver number on Scott's behalf).
 
@@ -117,6 +118,31 @@ Realtime channels:
 
 When admin approves someone, the approved user's app re-routes from "pending" to "approved" within ~100ms via realtime, no refresh needed. Same with family changes.
 
+### Conversations (per-item chat)
+
+Every checklist item is its own conversation thread. Reached via a chat-bubble icon on each `ChecklistRow`. Modal is full-screen on mobile, centered card on desktop (`max-w-md`), with a faded palm-sunset background (`public/beach-bg.webp`, ~218KB WebP from Unsplash) under a 75% white overlay so bubbles stay legible.
+
+**Schema:**
+- `messages(id, item_id, author_id, content, created_at, edited_at)` — hard delete (no tombstones), edit content via UPDATE which triggers a `touch_message_edited_at` BEFORE UPDATE trigger to set `edited_at = now()`. Anyone approved reads any thread; authors can only edit/delete their own rows.
+- `thread_reads(item_id, user_id, last_read_at)` — self-only RLS. Absent row = "never read." Updated on modal open via `markRead`.
+
+**Hook (`useConversations`):**
+- Eagerly loads **metadata only** for every message at page load — `id, item_id, author_id, created_at, edited_at`. Content stays server-side. Sufficient to compute per-item unread counts and message counts without N×content bandwidth.
+- Lazily fetches **full content** for an item the first time its modal opens (`loadThread(itemId)`). Cached in a `Map<itemId, Message[]>` in state.
+- Realtime channel listens to all `messages` (every change updates the metadata store + any loaded thread) and to `thread_reads` filtered to the current user.
+- Writes (post / edit / delete / markRead) go through the offline `writeQueue` like every other mutation. Posts mint client-side UUIDs so optimistic IDs match server.
+- **Conservative-win tradeoff:** posting in a thread you've never opened adds to metadata but NOT to the threads map; the message shows up if/when you open the thread. Fine at trip scale.
+
+**UI:**
+- `ConversationModal` renders standard messaging-app layout: avatar+bubble flex-row-reverse on own messages (right-aligned), flex-row on others (left). Per-user bubble color via FNV-1a + Murmur3 `fmix32` finalizer over user_id (`src/lib/messageColor.ts`) — the trivial djb2-style rolling hash collapsed adjacent UUIDs to identical hues; FNV alone wasn't enough either, the avalanche step was load-bearing.
+- Avatar logic: render `profile.avatar_url` if present (Google OAuth photo or Dicebear in dev), fall back to a colored first-letter circle.
+- `EmojiPicker` is an inline ~70-emoji curated grid (no external dep) opened from a Smile button next to Send. Inserts at the textarea cursor.
+- **Cascading unread indicators:** three nested badges all clickable, all coral.
+  - Top-bar pill (total across everything).
+  - Per-category badge in each section header (counts items in that category).
+  - Per-item badge on the chat-bubble icon.
+  Clicking any of them calls `jumpToNextUnread(scope)` in `Dashboard` — finds the next unread item in display order (or the first if the cursor's gone stale), dispatches a `window.dispatchEvent(new CustomEvent('collapsible:expand', { detail: { storageKey } }))` to expand its category if collapsed, then `scrollIntoView({ behavior: 'smooth', block: 'center' })`. `CollapsibleCard` listens for that event to enable the expansion. Cursor is per-scope and ref-based so cycling doesn't trigger re-renders.
+
 ### Pack mode
 
 Day-of-departure view that's deliberately **separate from the dashboard**. Reached via the amber **Pack** button in `TopBar` (always visible for users with a family). Toggles `mode: 'dashboard' | 'pack'` state in `Dashboard.tsx`; when `'pack'`, `Dashboard` renders `<PackView>` instead of the normal `<TopBar>`+main layout. PackView has its own compact header with a back button.
@@ -155,6 +181,7 @@ The semantic shift to watch: for task items, `contributions.done` on Trip was or
 - **`version/1.0`** (launched 2026-05-16, commit `8757eea`) — initial release. Pack mode added on the same tag. Family members began using the app actively.
 - **`version/2.0`** (launched 2026-05-17, commit `e628181`) — offline tolerance + Online/Offline pill + local-Supabase dev environment + Vitest. Schema unchanged since v1.0; entirely client-side work.
 - **`version/2.1`** (launched 2026-05-17) — family-private hide list. Migration `0005` adds `hidden_items`. New per-category "Hidden items" subsection in `ChecklistSection`. `useHiddenItems` mirrors the `usePacking` pattern (family-scoped Set, cache hydration, queue-routed writes, realtime channel filtered to own family). Pack screen also filters hidden items.
+- **`version/3.0`** (launched 2026-05-17) — per-item conversation threads. Migration `0006` adds `messages` + `thread_reads`. New `useConversations` hook splits eager metadata (every message minus content) from lazy thread content (loaded on modal open) so page-load payload stays small. ConversationModal renders chat with avatars + per-user-color bubbles + emoji picker + edit/delete on own messages + a faded palm-sunset background. Cascading unread indicators: top-bar pill (total) + per-category badge + per-item badge — all clickable to jump-to-next-unread, expanding collapsed sections on the way. Dev tooling: stable-UUID multi-user seeding, quick-pick buttons in the dev sign-in form, retry cap on `useAuth` profile lookups so a stale local JWT can't loop.
 
 ### Project state (current)
 
@@ -172,15 +199,18 @@ The semantic shift to watch: for task items, `contributions.done` on Trip was or
 Local Supabase runs via the CLI in Docker (added 2026-05-17). Don't develop against prod — the family is using it.
 
 - `supabase start` boots local Postgres + Auth + Realtime + Studio. Studio at http://127.0.0.1:54323, API at http://127.0.0.1:54321, mailpit at http://127.0.0.1:54324.
-- `supabase db reset` applies all migrations (0001–0004) to local and seeds 3 families + 74 items.
+- `supabase db reset --local` applies all migrations (0001–0006) to local and seeds 3 families + 74 items. **Always `--local`** — bare `supabase db reset` would target the prod remote; banned for this project.
 - `supabase status -o env` prints the local URL + anon JWT in env-var format.
 - `.env.development.local` (gitignored) holds the local values; Vite loads it in dev mode and it overrides `.env.local`. So `npm run dev` hits local, `npm run build` still hits prod via `.env.local`.
-- Migrations should be written, applied locally (`supabase db reset`), tested, then `supabase db push` to prod.
-- **Dev sign-in:** SignInScreen renders a small amber "Dev sign-in" form below the Google button, gated by `import.meta.env.DEV` so it never appears in prod builds. Uses `supabase.auth.signInWithPassword`. After `supabase db reset` (or first `supabase start`), recreate the user:
-  ```
-  ./scripts/seed-local-user.sh
-  ```
-  Defaults: `scott.t.weaver@gmail.com` / `devdev123`. The `handle_new_user` trigger auto-admins this email, so on insert the user lands as approved + admin + Weavers without further setup. Override via env: `EMAIL=other@example.com PASSWORD=hunter2 ./scripts/seed-local-user.sh`.
+- Migrations should be written, applied locally (`supabase db reset --local`), tested, then `supabase db push` to prod (forward-only).
+- **Dev sign-in:** SignInScreen renders a small amber "Dev sign-in" form below the Google button, gated by `import.meta.env.DEV` so it never appears in prod builds. Quick-pick buttons sign in as any of the seeded test users in one click; manual form is still there too.
+- **Multi-user seeding:** `./scripts/seed-local-users.sh` creates four test users with stable UUIDs (so browser sessions survive resets) and Dicebear avatars (so the avatar code path renders something in dev):
+  - `scott.t.weaver@gmail.com` / `devdev123` — admin, Weavers (auto-admin via `handle_new_user` trigger matching this email)
+  - `weaver-2@test.local` / `dev` — Weavers
+  - `ramirez@test.local` / `dev` — Ramirezes
+  - `titsworth@test.local` / `dev` — Titsworths
+
+  The `DEV_USERS` array in `SignInScreen.tsx` mirrors this list — keep them in sync when adding test users. Override via `EMAIL=… PASSWORD=… ./scripts/seed-local-users.sh`.
 
 ### Post-launch operating notes
 

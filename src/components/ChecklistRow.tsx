@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import { Minus, Plus, X, Check, Circle, Hand, EyeOff } from 'lucide-react';
+import { Minus, Plus, X, Check, Circle, Hand, EyeOff, MessageCircle } from 'lucide-react';
 import type { ChecklistItem, Contribution, Family, Profile } from '@/types/db';
 import { cx, firstName, relativeTime } from '@/lib/format';
 
@@ -15,6 +15,9 @@ interface Props {
   onUnclaim: (itemId: string) => Promise<void>;
   onDelete: (itemId: string) => Promise<void>;
   onHide: (itemId: string) => void;
+  onOpenChat: (itemId: string) => void;
+  unreadCount: number;
+  messageCount: number;
   currentUserId: string;
   myFamilyId: string | null;
   isAdmin: boolean;
@@ -25,6 +28,7 @@ const stripThe = (name: string) => name.replace(/^The\s+/i, '');
 export default function ChecklistRow({
   item, families, profiles, familyById,
   getContribution, onAdjustQuantity, onToggleTask, onClaim, onUnclaim, onDelete, onHide,
+  onOpenChat, unreadCount, messageCount,
   myFamilyId, isAdmin,
 }: Props) {
   const [deleteConfirming, setDeleteConfirming] = useState(false);
@@ -61,7 +65,7 @@ export default function ChecklistRow({
   const latestFamily = latest?.family_id ? familyById.get(latest.family_id) : undefined;
 
   return (
-    <div className="py-3 group">
+    <div id={`item-${item.id}`} className="py-3 group scroll-mt-24">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -88,6 +92,21 @@ export default function ChecklistRow({
         </div>
 
         <div className="flex items-center gap-0.5 flex-shrink-0">
+          <button
+            onClick={() => onOpenChat(item.id)}
+            className={cx(
+              'relative p-1 rounded transition',
+              messageCount > 0 ? 'text-ocean-500 hover:text-ocean-700' : 'opacity-0 group-hover:opacity-100 sm:opacity-100 text-slate-300 hover:text-slate-600',
+            )}
+            title={messageCount === 0 ? 'Start a conversation' : `${messageCount} message${messageCount === 1 ? '' : 's'}`}
+          >
+            <MessageCircle size={16} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-coral-500 text-white text-[10px] rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center font-bold tabular-nums leading-none">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
           <button
             onClick={() => onHide(item.id)}
             className="opacity-0 group-hover:opacity-100 sm:opacity-100 p-1 rounded transition text-slate-300 hover:text-slate-600"
