@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, writeQueue } from '@/lib/supabase';
+import { cache } from '@/lib/cache';
+import { subscribeReconnect } from '@/lib/online';
 import type { ChecklistItem, Contribution, TrackingType } from '@/types/db';
 
 interface State {
@@ -9,22 +11,47 @@ interface State {
   error: string | null;
 }
 
+interface CachedShape {
+  items: ChecklistItem[];
+  contributions: Array<[string, Contribution]>;
+}
+
+const CACHE_KEY = 'checklist';
 const contribKey = (itemId: string, familyId: string) => `${itemId}::${familyId}`;
 const DEBOUNCE_MS = 250;
 
-export function useChecklist(currentUserId: string | null) {
-  const [state, setState] = useState<State>({
-    items: [],
-    contributions: new Map(),
-    loading: true,
+function hydrate(): State {
+  const cached = cache.get<CachedShape>(CACHE_KEY);
+  if (!cached) {
+    return { items: [], contributions: new Map(), loading: true, error: null };
+  }
+  return {
+    items: cached.items,
+    contributions: new Map(cached.contributions),
+    loading: false,
     error: null,
-  });
+  };
+}
 
-  // Latest state for the debounced writer to read without re-creating closures
+export function useChecklist(currentUserId: string | null) {
+  const [state, setState] = useState<State>(hydrate);
+
+  // Latest state for the debounced writer to read without re-creating closures.
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
 
   const pendingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  // Persist items + contributions to localStorage on every change. Cheap
+  // (a few KB) and keeps the cache in sync with optimistic state, so a
+  // reload-while-offline shows the user's pending edits.
+  useEffect(() => {
+    if (state.loading) return;
+    cache.set<CachedShape>(CACHE_KEY, {
+      items: state.items,
+      contributions: [...state.contributions.entries()],
+    });
+  }, [state.items, state.contributions, state.loading]);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,6 +82,10 @@ export function useChecklist(currentUserId: string | null) {
     }
 
     loadAll();
+
+    // Refetch on reconnect — realtime drops events while we're offline, so
+    // a clean reload catches up to current server state.
+    const unsubReconnect = subscribeReconnect(() => { void loadAll(); });
 
     const channel = supabase
       .channel('checklist-and-contributions')
@@ -105,36 +136,27 @@ export function useChecklist(currentUserId: string | null) {
 
     return () => {
       cancelled = true;
+      unsubReconnect();
       supabase.removeChannel(channel);
     };
   }, []);
 
-  // Flush the latest optimistic value for a key to the server. On error, refetch
-  // the row to recover from divergence.
-  const flushWrite = useCallback(async (key: string) => {
+  // Enqueue the latest optimistic contribution for this key and trigger a
+  // flush. If we're online, the flush completes immediately; if offline,
+  // the entry waits in localStorage until the next reconnect.
+  const flushWrite = useCallback((key: string) => {
     const latest = stateRef.current.contributions.get(key);
     if (!latest) return;
-    const { error } = await supabase
-      .from('contributions')
-      .upsert(latest, { onConflict: 'item_id,family_id' });
-    if (!error) return;
-    const [itemId, familyId] = key.split('::');
-    const { data } = await supabase
-      .from('contributions')
-      .select('*')
-      .eq('item_id', itemId)
-      .eq('family_id', familyId)
-      .maybeSingle();
-    setState((s) => {
-      const contributions = new Map(s.contributions);
-      if (data) contributions.set(key, data as Contribution);
-      else contributions.delete(key);
-      return { ...s, contributions, error: error.message };
+    writeQueue.enqueue({
+      table: 'contributions',
+      op: 'upsert',
+      payload: latest,
     });
+    void writeQueue.flush();
   }, []);
 
-  // Reset a 250ms debounce per (item,family) key. Rapid presses coalesce into
-  // one upsert with the final optimistic value.
+  // Reset a 250ms debounce per (item,family) key. Rapid presses coalesce
+  // into a single enqueued op with the final optimistic value.
   const scheduleWrite = useCallback((key: string) => {
     const existing = pendingTimers.current.get(key);
     if (existing) clearTimeout(existing);
@@ -240,71 +262,43 @@ export function useChecklist(currentUserId: string | null) {
         return { ...s, contributions };
       });
 
-      const otherFamilyIds = [...priorByFamily.keys()].filter((fid) => fid !== familyId);
-      if (otherFamilyIds.length > 0) {
-        const { error: delErr } = await supabase
-          .from('contributions')
-          .delete()
-          .eq('item_id', itemId)
-          .in('family_id', otherFamilyIds);
-        if (delErr) {
-          setState((s) => {
-            const contributions = new Map(s.contributions);
-            for (const [fid, prior] of priorByFamily) {
-              contributions.set(contribKey(itemId, fid), prior);
-            }
-            return { ...s, contributions, error: delErr.message };
-          });
-          throw delErr;
-        }
-      }
-
-      const { error: upsertErr } = await supabase
-        .from('contributions')
-        .upsert(optimistic, { onConflict: 'item_id,family_id' });
-      if (upsertErr) {
-        setState((s) => {
-          const contributions = new Map(s.contributions);
-          for (const [fid, prior] of priorByFamily) {
-            contributions.set(contribKey(itemId, fid), prior);
-          }
-          if (!priorByFamily.has(familyId)) contributions.delete(contribKey(itemId, familyId));
-          return { ...s, contributions, error: upsertErr.message };
+      // Enqueue each prior-family delete + the upsert. They flush FIFO so
+      // the upsert lands after the deletes complete.
+      for (const otherFamilyId of priorByFamily.keys()) {
+        if (otherFamilyId === familyId) continue;
+        writeQueue.enqueue({
+          table: 'contributions',
+          op: 'delete',
+          key: { item_id: itemId, family_id: otherFamilyId },
         });
-        throw upsertErr;
       }
+      writeQueue.enqueue({
+        table: 'contributions',
+        op: 'upsert',
+        payload: optimistic,
+      });
+      void writeQueue.flush();
     },
     [currentUserId, state.contributions],
   );
 
   const unclaimItem = useCallback(
     async (itemId: string) => {
-      const prior = new Map<string, Contribution>();
-      for (const c of state.contributions.values()) {
-        if (c.item_id === itemId) prior.set(c.family_id, c);
-      }
-
       setState((s) => {
         const contributions = new Map(s.contributions);
-        for (const fid of prior.keys()) {
-          contributions.delete(contribKey(itemId, fid));
+        for (const k of [...contributions.keys()]) {
+          if (k.startsWith(`${itemId}::`)) contributions.delete(k);
         }
         return { ...s, contributions };
       });
-
-      const { error } = await supabase.from('contributions').delete().eq('item_id', itemId);
-      if (error) {
-        setState((s) => {
-          const contributions = new Map(s.contributions);
-          for (const [fid, p] of prior) {
-            contributions.set(contribKey(itemId, fid), p);
-          }
-          return { ...s, contributions, error: error.message };
-        });
-        throw error;
-      }
+      writeQueue.enqueue({
+        table: 'contributions',
+        op: 'deleteByItem',
+        key: { item_id: itemId },
+      });
+      void writeQueue.flush();
     },
-    [state.contributions],
+    [],
   );
 
   const addCustomItem = useCallback(
@@ -315,28 +309,46 @@ export function useChecklist(currentUserId: string | null) {
         .filter((i) => i.category === category)
         .reduce((m, i) => Math.max(m, i.sort_order), 0);
 
-      const { data, error } = await supabase
-        .from('checklist_items')
-        .insert({
-          category,
-          label: label.trim(),
-          tracking_type: trackingType,
-          is_default: false,
-          sort_order: maxOrder + 10,
-          created_by: currentUserId,
-        })
-        .select()
-        .single();
+      // Mint UUID client-side so the optimistic row matches the eventual
+      // server row. The schema accepts client-provided ids.
+      const optimistic: ChecklistItem = {
+        id: crypto.randomUUID(),
+        category,
+        label: label.trim(),
+        tracking_type: trackingType,
+        is_default: false,
+        sort_order: maxOrder + 10,
+        created_by: currentUserId,
+        created_at: new Date().toISOString(),
+      };
 
-      if (error) throw error;
-      return data as ChecklistItem;
+      setState((s) => ({
+        ...s,
+        items: [...s.items, optimistic].sort((a, b) =>
+          a.category === b.category ? a.sort_order - b.sort_order : a.category.localeCompare(b.category),
+        ),
+      }));
+
+      writeQueue.enqueue({
+        table: 'checklist_items',
+        op: 'insert',
+        payload: optimistic,
+      });
+      void writeQueue.flush();
+
+      return optimistic;
     },
     [currentUserId, state.items],
   );
 
   const deleteCustomItem = useCallback(async (itemId: string) => {
-    const { error } = await supabase.from('checklist_items').delete().eq('id', itemId);
-    if (error) throw error;
+    setState((s) => ({ ...s, items: s.items.filter((i) => i.id !== itemId) }));
+    writeQueue.enqueue({
+      table: 'checklist_items',
+      op: 'delete',
+      key: { id: itemId },
+    });
+    void writeQueue.flush();
   }, []);
 
   const itemsByCategory = useMemo(() => {

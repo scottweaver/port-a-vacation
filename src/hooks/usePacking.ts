@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, writeQueue } from '@/lib/supabase';
+import { cache } from '@/lib/cache';
+import { subscribeReconnect } from '@/lib/online';
 
 interface State {
   packed: Set<string>;
@@ -9,17 +11,29 @@ interface State {
 
 const DEBOUNCE_MS = 200;
 
+const cacheKeyFor = (familyId: string) => `packing:${familyId}`;
+
+function hydrate(familyId: string | null): State {
+  if (!familyId) return { packed: new Set(), loading: false, error: null };
+  const cached = cache.get<string[]>(cacheKeyFor(familyId));
+  if (!cached) return { packed: new Set(), loading: true, error: null };
+  return { packed: new Set(cached), loading: false, error: null };
+}
+
 export function usePacking(currentUserId: string | null, myFamilyId: string | null) {
-  const [state, setState] = useState<State>({
-    packed: new Set(),
-    loading: true,
-    error: null,
-  });
+  const [state, setState] = useState<State>(() => hydrate(myFamilyId));
 
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
 
   const pendingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  // Persist packed set to localStorage on every change (keyed per family).
+  useEffect(() => {
+    if (!myFamilyId) return;
+    if (state.loading) return;
+    cache.set(cacheKeyFor(myFamilyId), [...state.packed]);
+  }, [state.packed, state.loading, myFamilyId]);
 
   useEffect(() => {
     if (!myFamilyId) {
@@ -48,6 +62,8 @@ export function usePacking(currentUserId: string | null, myFamilyId: string | nu
 
     loadAll();
 
+    const unsubReconnect = subscribeReconnect(() => { void loadAll(); });
+
     const channel = supabase
       .channel(`packing-${myFamilyId}`)
       .on('postgres_changes',
@@ -71,37 +87,35 @@ export function usePacking(currentUserId: string | null, myFamilyId: string | nu
 
     return () => {
       cancelled = true;
+      unsubReconnect();
       supabase.removeChannel(channel);
     };
   }, [myFamilyId]);
 
-  // Ensure server state matches optimistic local state for this item.
-  // If locally packed, INSERT (no-op on conflict). If locally unpacked, DELETE.
-  // Both ops are idempotent.
-  const flushWrite = useCallback(async (itemId: string) => {
+  // Enqueue the desired state for this item. If it's now packed (in set),
+  // upsert; if unpacked, delete. Both are idempotent.
+  const flushWrite = useCallback((itemId: string) => {
     if (!currentUserId || !myFamilyId) return;
     const isPacked = stateRef.current.packed.has(itemId);
     if (isPacked) {
-      const { error } = await supabase
-        .from('packing_status')
-        .upsert(
-          {
-            item_id: itemId,
-            family_id: myFamilyId,
-            updated_by: currentUserId,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'item_id,family_id', ignoreDuplicates: true },
-        );
-      if (error) setState((s) => ({ ...s, error: error.message }));
+      writeQueue.enqueue({
+        table: 'packing_status',
+        op: 'upsert',
+        payload: {
+          item_id: itemId,
+          family_id: myFamilyId,
+          updated_by: currentUserId,
+          updated_at: new Date().toISOString(),
+        },
+      });
     } else {
-      const { error } = await supabase
-        .from('packing_status')
-        .delete()
-        .eq('item_id', itemId)
-        .eq('family_id', myFamilyId);
-      if (error) setState((s) => ({ ...s, error: error.message }));
+      writeQueue.enqueue({
+        table: 'packing_status',
+        op: 'delete',
+        key: { item_id: itemId, family_id: myFamilyId },
+      });
     }
+    void writeQueue.flush();
   }, [currentUserId, myFamilyId]);
 
   const scheduleWrite = useCallback((itemId: string) => {
@@ -114,7 +128,6 @@ export function usePacking(currentUserId: string | null, myFamilyId: string | nu
     pendingTimers.current.set(itemId, timer);
   }, [flushWrite]);
 
-  // Flush pending writes on tab hide / unmount so quick toggles aren't lost.
   useEffect(() => {
     const flushAll = () => {
       for (const [key, timer] of pendingTimers.current.entries()) {

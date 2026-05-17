@@ -20,8 +20,20 @@ export function useAuth() {
 
     supabase.auth.getSession().then(({ data }) => {
       if (cancelled) return;
-      setSession(data.session);
-      if (!data.session) setStage({ kind: 'signed-out' });
+      const session = data.session;
+      if (!session) { setStage({ kind: 'signed-out' }); return; }
+
+      // Option B: if the cached session is expired and we can't refresh it
+      // (offline), bounce straight to sign-in rather than render the
+      // dashboard with a token that will fail every write. Sign-in
+      // requires network, so the user knows what they have to do.
+      const expiresAt = session.expires_at;
+      if (expiresAt && expiresAt * 1000 < Date.now() && !navigator.onLine) {
+        setStage({ kind: 'signed-out' });
+        return;
+      }
+
+      setSession(session);
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {

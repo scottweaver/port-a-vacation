@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, LogOut, Shield, Home, Users as UsersIcon, Luggage } from 'lucide-react';
+import { ChevronDown, LogOut, Shield, Home, Users as UsersIcon, Luggage, WifiOff, RefreshCw } from 'lucide-react';
 import type { Profile, Family } from '@/types/db';
 import { cx, firstName } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
+import { useOnline, useQueueSize } from '@/hooks/useOnline';
 
 interface Props {
   profile: Profile;
@@ -19,6 +20,8 @@ export default function TopBar({
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const online = useOnline();
+  const pendingWrites = useQueueSize();
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -48,6 +51,24 @@ export default function TopBar({
           </div>
 
           <div className="flex items-center gap-2">
+            {!online && (
+              <span
+                className="bg-slate-700/40 text-white/90 rounded-md px-2 py-1 text-xs flex items-center gap-1 font-medium"
+                title="No network — changes will sync when you reconnect"
+              >
+                <WifiOff size={12} />
+                <span className="hidden sm:inline">Offline</span>
+              </span>
+            )}
+            {pendingWrites > 0 && (
+              <span
+                className="bg-amber-400/90 text-amber-900 rounded-md px-2 py-1 text-xs flex items-center gap-1 font-medium tabular-nums"
+                title={`${pendingWrites} pending write${pendingWrites === 1 ? '' : 's'} waiting to sync`}
+              >
+                <RefreshCw size={12} className={online ? 'animate-spin' : ''} />
+                <span>{pendingWrites}</span>
+              </span>
+            )}
             {profile.is_admin && (
               <div className="flex bg-white/10 rounded-lg p-0.5 text-sm">
                 <button

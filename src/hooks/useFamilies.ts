@@ -1,10 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { cache } from '@/lib/cache';
 import type { Family } from '@/types/db';
 
+const CACHE_KEY = 'families';
+
 export function useFamilies() {
-  const [families, setFamilies] = useState<Family[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [families, setFamilies] = useState<Family[]>(() => cache.get<Family[]>(CACHE_KEY) ?? []);
+  const [loading, setLoading] = useState(() => cache.get<Family[]>(CACHE_KEY) === null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -17,7 +20,9 @@ export function useFamilies() {
         setError(error.message);
         return;
       }
-      setFamilies((data ?? []) as Family[]);
+      const rows = (data ?? []) as Family[];
+      setFamilies(rows);
+      cache.set(CACHE_KEY, rows);
     })();
     return () => {
       cancelled = true;

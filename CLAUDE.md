@@ -76,6 +76,29 @@ State persists in `localStorage` via `useCollapsedState` (`src/lib/useCollapsed.
 
 Anchor scrolling from ProgressCard category tiles preserves the `cat-<key>` id on the section element, so deep-links still work. They scroll to a collapsed section if it's collapsed — auto-expand-on-anchor was considered and deferred.
 
+### Offline tolerance
+
+Tier-2 offline support (in-session): the app keeps working through brief network drops, queues writes to localStorage, and syncs on reconnect. **Not** a PWA — cold-loading the page still needs network for the bundle. Built on three pieces:
+
+- **`src/lib/cache.ts`** — versioned (`port-a:cache:v1:<name>`) localStorage cache. Class with injectable storage so tests don't need jsdom. Defensive on every boundary: corrupted JSON is cleared on read; quota errors and unserializable values are dropped silently. Hooks hydrate from cache on first render, then refresh from the server. Persist on every state change. Bump `CACHE_VERSION` on schema changes — no migration path; the cache regenerates from the server.
+- **`src/lib/queue.ts`** — `WriteQueue` persists ops to the cache so a tab close mid-flush doesn't lose work. FIFO with `enqueue` / `flush` / `subscribe`. Decoupled from Supabase via a `Sender` callback (production wiring in `queueSender.ts`, tests pass a fake). `classifyError` maps Postgres 23xxx (constraint) and 42xxx (permission) plus PostgREST RLS codes to `drop`; anything else retries up to `maxAttempts` (default 5).
+- **`src/lib/online.ts`** — installed once from `main.tsx`. Listens to `window` online/offline events plus `visibilitychange→visible` as a backstop. On reconnect: notify subscribers and flush the write queue. Hooks subscribe via `subscribeReconnect` to refetch state that realtime may have dropped events for during the offline window.
+
+Hook integration:
+- **`useChecklist` / `usePacking`** hydrate from cache, persist on change, route all writes through `writeQueue.enqueue(...)` followed by an immediate `writeQueue.flush()` (which is a no-op offline). Old refetch-on-error logic is gone; the queue handles retry. The 250ms debounce per `(item, family)` key still coalesces rapid presses *before* enqueue.
+- **`useFamilies` / `useProfiles`** hydrate from cache, persist on change. Read-only — no queue involvement.
+- **`useChecklist.addCustomItem`** mints UUIDs client-side (`crypto.randomUUID()`) so the optimistic row matches the eventual server row even if queued offline. Schema accepts client-provided ids.
+
+UI surface:
+- **`TopBar`** shows a grey `Offline` pill when `navigator.onLine === false` and an amber `N` pending-writes badge whenever the queue is non-empty (with a spinner when online and currently flushing). Both come from `useOnline()` / `useQueueSize()` in `src/hooks/useOnline.ts`.
+
+Auth resilience (Option B):
+- On reload, `useAuth` checks `session.expires_at`. If the cached session is expired AND we're offline, it skips straight to `signed-out` instead of rendering the dashboard with a token that will 401 every write. Sign-in requires network, so the user knows what to do.
+
+Conflict policy: last-write-wins for quantity items. With one person per family managing edits in practice, this is acceptable. If contention becomes real, the upgrade path is a server-side `adjust_quantity(item_id, family_id, delta)` RPC and sending deltas instead of absolutes.
+
+Test coverage: `cache.test.ts` (9 tests) and `queue.test.ts` (18 tests) plus `format.test.ts` (7). Run with `npm test` (one-shot) or `npm run test:watch`. Hook tests deliberately skipped — manual verification via DevTools offline toggle is the chosen approach.
+
 ### Realtime UX
 
 Optimistic updates with per-key debounced writes in `useChecklist` and `usePacking`. Quantity/task presses update local state via functional `setState` (so rapid clicks compound correctly), then a 250ms debounce per `(item, family)` key coalesces a burst into one upsert. On error, the row is refetched from the server to recover from divergence rather than rolled back (no single rollback target after coalescing). Pending writes flush on `visibilitychange === 'hidden'` and on hook unmount so a tab close mid-debounce doesn't drop data. Same pattern in `usePacking` for pack/unpack toggles, 200ms debounce.
