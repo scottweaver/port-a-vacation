@@ -128,6 +128,7 @@ The app is live and in use — future work in this repo is shipping changes to a
 - Custom domain on Vercel
 - A "trip is now active" mode that swaps countdown for "X hours left"
 - Reconsider-denied-users UI (`reconsider` action exists in `useAdmin` but no button)
+- **Make the "add custom item" form more discoverable.** The feature is already built (per-category inline form at the bottom of each `ChecklistSection`, with Count/Task toggle and delete affordance on user-added rows). Scott didn't notice it on the first prod look — it blends in below the item list. Lightest fix: add a top divider + small "Add a new item" label above the form. Stronger fix (more friction): collapse behind a "+ Add an item" button.
 
 ---
 
