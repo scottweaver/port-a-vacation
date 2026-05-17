@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Minus, Plus, X, Check, Circle, Hand } from 'lucide-react';
 import type { ChecklistItem, Contribution, Family, Profile } from '@/types/db';
 import { cx, firstName, relativeTime } from '@/lib/format';
@@ -148,13 +148,15 @@ export default function ChecklistRow({
             return (
               <FamilyControl
                 key={family.id}
+                itemId={item.id}
+                familyId={family.id}
                 family={family}
                 isMine={isMine}
                 tracking={item.tracking_type}
                 quantity={contrib?.quantity ?? 0}
                 done={contrib?.done ?? false}
-                onAdjust={(delta) => onAdjustQuantity(item.id, family.id, delta)}
-                onToggle={() => onToggleTask(item.id, family.id)}
+                onAdjust={onAdjustQuantity}
+                onToggle={onToggleTask}
               />
             );
           })}
@@ -191,16 +193,18 @@ function ClaimButton({
   );
 }
 
-function FamilyControl({
-  family, isMine, tracking, quantity, done, onAdjust, onToggle,
+const FamilyControl = memo(function FamilyControl({
+  itemId, familyId, family, isMine, tracking, quantity, done, onAdjust, onToggle,
 }: {
+  itemId: string;
+  familyId: string;
   family: Family;
   isMine: boolean;
   tracking: 'quantity' | 'task' | 'claim';
   quantity: number;
   done: boolean;
-  onAdjust: (delta: number) => Promise<void>;
-  onToggle: () => Promise<void>;
+  onAdjust: (itemId: string, familyId: string, delta: number) => Promise<void>;
+  onToggle: (itemId: string, familyId: string) => Promise<void>;
 }) {
   const short = stripThe(family.display_name);
 
@@ -218,7 +222,7 @@ function FamilyControl({
         </div>
         <div className="flex items-center justify-between gap-1">
           <button
-            onClick={() => onAdjust(-1)}
+            onClick={() => onAdjust(itemId, familyId, -1)}
             disabled={quantity <= 0}
             className="w-7 h-7 rounded flex items-center justify-center bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed"
             aria-label={`Decrease ${short}`}
@@ -232,7 +236,7 @@ function FamilyControl({
             {quantity}
           </span>
           <button
-            onClick={() => onAdjust(1)}
+            onClick={() => onAdjust(itemId, familyId, 1)}
             className="w-7 h-7 rounded flex items-center justify-center bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
             aria-label={`Increase ${short}`}
           >
@@ -245,7 +249,7 @@ function FamilyControl({
 
   return (
     <button
-      onClick={onToggle}
+      onClick={() => onToggle(itemId, familyId)}
       className={cx(
         'rounded-lg border p-2 flex items-center justify-between gap-2 transition',
         done ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200 hover:bg-slate-100',
@@ -259,4 +263,4 @@ function FamilyControl({
       {done ? <Check size={18} className="text-emerald-600 flex-shrink-0" /> : <Circle size={18} className="text-slate-300 flex-shrink-0" />}
     </button>
   );
-}
+});
