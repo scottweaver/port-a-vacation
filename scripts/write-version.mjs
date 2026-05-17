@@ -47,7 +47,13 @@ function tryFetchTagsAndDescribe() {
 function tryPackageJson() {
   try {
     const pkg = JSON.parse(readFileSync(resolve(repoRoot, 'package.json'), 'utf-8'));
-    if (pkg.version) return String(pkg.version);
+    if (!pkg.version) return null;
+    // Normalize "3.1.0" → "3.1" so the package.json fallback matches the
+    // git-tag style (version/3.1, public/release-notes/3.1.md). Only strip
+    // when the trailing component is exactly ".0" — "3.1.1" stays as-is.
+    const v = String(pkg.version);
+    const match = v.match(/^(\d+\.\d+)\.0$/);
+    return match ? match[1] : v;
   } catch { /* unreadable or malformed */ }
   return null;
 }

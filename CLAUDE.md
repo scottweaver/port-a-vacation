@@ -182,6 +182,37 @@ The semantic shift to watch: for task items, `contributions.done` on Trip was or
 - **`version/2.0`** (launched 2026-05-17, commit `e628181`) — offline tolerance + Online/Offline pill + local-Supabase dev environment + Vitest. Schema unchanged since v1.0; entirely client-side work.
 - **`version/2.1`** (launched 2026-05-17) — family-private hide list. Migration `0005` adds `hidden_items`. New per-category "Hidden items" subsection in `ChecklistSection`. `useHiddenItems` mirrors the `usePacking` pattern (family-scoped Set, cache hydration, queue-routed writes, realtime channel filtered to own family). Pack screen also filters hidden items.
 - **`version/3.0`** (launched 2026-05-17) — per-item conversation threads. Migration `0006` adds `messages` + `thread_reads`. New `useConversations` hook splits eager metadata (every message minus content) from lazy thread content (loaded on modal open) so page-load payload stays small. ConversationModal renders chat with avatars + per-user-color bubbles + emoji picker + edit/delete on own messages + a faded palm-sunset background. Cascading unread indicators: top-bar pill (total) + per-category badge + per-item badge — all clickable to jump-to-next-unread, expanding collapsed sections on the way. Dev tooling: stable-UUID multi-user seeding, quick-pick buttons in the dev sign-in form, retry cap on `useAuth` profile lookups so a stale local JWT can't loop.
+- **`version/3.1`** (launched 2026-05-17) — chat polish + self-announcing updates. Typing indicators (Supabase Realtime broadcast, ephemeral, no DB writes). Browser notifications for incoming messages when the tab is backgrounded. Version-update banner: red bar under the TopBar appears when `public/version.json` differs from the bundle's mounted version; clicking reloads; an "What's new" button opens an in-app `ReleaseNotesModal` that renders the bundled `public/release-notes/<X.Y>.md` via a tiny custom markdown component. Header subtitle shows `v<X.Y> (<short-sha>)`. URL linkification in chat messages. No schema changes. Fixed up in `2a6dec7` where Vercel's shallow clone stripped tags and produced `app_version=dev`; build script now tries `git describe` → `git fetch --tags && describe` → `package.json` `version` field in order.
+
+### Release checklist
+
+Steps to ship a release (e.g., `version/3.2`). Each manual step matters — skipping the package.json bump or the release-notes file will break either the header display, the GitHub release, or both.
+
+1. **Write release notes** at `public/release-notes/<X.Y>.md`. Target users in a `## What's new` section. Engineering notes can go in `## Under the hood`. Same content powers the in-app modal AND the GitHub release body.
+2. **Bump `package.json` `version`** to match (e.g., `"3.1.0"`). Required failsafe: Vercel's shallow clone may not surface git tags, so `scripts/write-version.mjs` falls back to package.json. Without the bump, the deployed `app_version` ends up `"dev"`, the header reads `v dev (<sha>)`, and the "What's new" button hides itself.
+3. **Commit** (notes file + package.json bump in one commit is fine).
+4. **Tag**:
+   ```bash
+   git tag -a version/<X.Y> -m "v<X.Y>: <one-line summary>" HEAD
+   ```
+5. **Push** main and the tag:
+   ```bash
+   git push origin main
+   git push origin version/<X.Y>
+   ```
+6. **Create the GitHub release** from the same notes file:
+   ```bash
+   gh release create version/<X.Y> --title "v<X.Y> — <title>" --notes-file public/release-notes/<X.Y>.md
+   ```
+7. **Vercel auto-deploys** on the push to main. Watch the build log via `mcp__plugin_vercel_vercel__get_deployment_build_logs` (or the dashboard) and confirm: `wrote version.json build_id=<sha> app_version=<X.Y>`. If `app_version=dev` slips through, the package.json bump was missed — fix and push again.
+8. **Add the entry** to "Release history" above in this file, including a one-paragraph what-changed summary.
+
+The Vercel + write-version chain works like this:
+- `vercel build` runs `npm run build` → `node scripts/write-version.mjs && tsc -b && vite build`.
+- `write-version.mjs` writes `public/version.json` with `{build_id, app_version, built_at}` BEFORE `vite build` so the file is bundled into `dist/` and served at `/version.json` on the deployed site.
+- `build_id` comes from `VERCEL_GIT_COMMIT_SHA` (the env var Vercel exposes) — always present, never the failure mode.
+- `app_version` tries three sources: (a) `git describe --tags --abbrev=0` (works locally where tags exist; fails on Vercel due to shallow clone), (b) `git fetch --tags origin --depth=1` then describe (sometimes works on Vercel; depends on auth/network), (c) `package.json` `version` field (always works as long as someone remembered to bump it).
+- The package.json path normalizes `"3.1.0"` → `"3.1"` (only strips a trailing `.0` patch component) so it matches the tag style. Without this, the in-app release-notes modal would fetch `/release-notes/3.1.0.md` and miss the actual file at `/release-notes/3.1.md`.
 
 ### Project state (current)
 
