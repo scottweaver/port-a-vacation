@@ -3,6 +3,7 @@ import { X, Send, Pencil, Trash2, Check, X as XCancel, Smile } from 'lucide-reac
 import type { ChecklistItem, Message, Profile } from '@/types/db';
 import { cx, firstName, relativeTime } from '@/lib/format';
 import { messageColor } from '@/lib/messageColor';
+import { linkify } from '@/lib/linkify';
 import EmojiPicker from './EmojiPicker';
 
 interface Props {
@@ -262,7 +263,19 @@ function MessageRow({
             className="mt-1 max-w-[85%] px-3 py-2 rounded-lg text-sm text-slate-800 border whitespace-pre-wrap break-words"
             style={{ backgroundColor: color.bubbleBg, borderColor: color.bubbleBorder }}
           >
-            {message.content}
+            {linkify(message.content).map((seg, i) => seg.type === 'link' ? (
+              <a
+                key={i}
+                href={seg.value}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="text-ocean-700 underline underline-offset-2 hover:text-ocean-900 break-all"
+              >
+                {seg.value}
+              </a>
+            ) : (
+              <span key={i}>{seg.value}</span>
+            ))}
           </div>
         )}
 
