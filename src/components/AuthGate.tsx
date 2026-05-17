@@ -12,7 +12,7 @@ interface Props {
 }
 
 export default function AuthGate({ auth }: Props) {
-  const { stage, signInWithGoogle, signOut } = auth;
+  const { stage, signInWithGoogle, signInWithEmail, signOut } = auth;
 
   useEffect(() => {
     if (stage.kind === 'approved' || stage.kind === 'pending' || stage.kind === 'needs-family') {
@@ -26,7 +26,7 @@ export default function AuthGate({ auth }: Props) {
     case 'loading':
       return <LoadingScreen />;
     case 'signed-out':
-      return <SignInScreen onSignIn={signInWithGoogle} />;
+      return <SignInScreen onSignIn={signInWithGoogle} onDevSignIn={signInWithEmail} />;
     case 'pending':
       return <PendingScreen profile={stage.profile} onSignOut={signOut} />;
     case 'denied':

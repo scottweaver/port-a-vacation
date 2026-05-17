@@ -5,11 +5,14 @@ import { useCountdown } from '@/lib/countdown';
 
 interface Props {
   onSignIn: () => Promise<void>;
+  onDevSignIn?: (email: string, password: string) => Promise<void>;
 }
 
-export default function SignInScreen({ onSignIn }: Props) {
+export default function SignInScreen({ onSignIn, onDevSignIn }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [devEmail, setDevEmail] = useState('scott.t.weaver@gmail.com');
+  const [devPassword, setDevPassword] = useState('devdev123');
   const countdown = useCountdown(TRIP_START);
 
   async function handle() {
@@ -19,6 +22,19 @@ export default function SignInScreen({ onSignIn }: Props) {
       await onSignIn();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign-in failed. Try again?');
+      setLoading(false);
+    }
+  }
+
+  async function handleDev(e: React.FormEvent) {
+    e.preventDefault();
+    if (!onDevSignIn) return;
+    setError(null);
+    setLoading(true);
+    try {
+      await onDevSignIn(devEmail, devPassword);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Dev sign-in failed.');
       setLoading(false);
     }
   }
@@ -58,6 +74,37 @@ export default function SignInScreen({ onSignIn }: Props) {
             </div>
           )}
         </div>
+
+        {import.meta.env.DEV && onDevSignIn && (
+          <form onSubmit={handleDev} className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+            <div className="text-xs font-medium text-amber-900 uppercase tracking-wide">
+              Dev sign-in (local only)
+            </div>
+            <input
+              type="email"
+              value={devEmail}
+              onChange={(e) => setDevEmail(e.target.value)}
+              className="w-full px-2 py-1.5 text-sm border border-amber-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+              placeholder="email"
+              autoComplete="email"
+            />
+            <input
+              type="password"
+              value={devPassword}
+              onChange={(e) => setDevPassword(e.target.value)}
+              className="w-full px-2 py-1.5 text-sm border border-amber-200 rounded bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+              placeholder="password"
+              autoComplete="current-password"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full px-3 py-1.5 text-sm font-medium bg-amber-400 hover:bg-amber-300 text-amber-900 rounded transition disabled:opacity-50"
+            >
+              Sign in (dev)
+            </button>
+          </form>
+        )}
 
         <p className="text-center text-xs text-slate-400 mt-6">
           May 25–29, 2026 · Port Aransas, Texas

@@ -140,6 +140,21 @@ The semantic shift to watch: for task items, `contributions.done` on Trip was or
 
 `.env.local` holds real Supabase values (gitignored). Production env vars `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` live in Vercel project settings.
 
+### Local development
+
+Local Supabase runs via the CLI in Docker (added 2026-05-17). Don't develop against prod — the family is using it.
+
+- `supabase start` boots local Postgres + Auth + Realtime + Studio. Studio at http://127.0.0.1:54323, API at http://127.0.0.1:54321, mailpit at http://127.0.0.1:54324.
+- `supabase db reset` applies all migrations (0001–0004) to local and seeds 3 families + 74 items.
+- `supabase status -o env` prints the local URL + anon JWT in env-var format.
+- `.env.development.local` (gitignored) holds the local values; Vite loads it in dev mode and it overrides `.env.local`. So `npm run dev` hits local, `npm run build` still hits prod via `.env.local`.
+- Migrations should be written, applied locally (`supabase db reset`), tested, then `supabase db push` to prod.
+- **Dev sign-in:** SignInScreen renders a small amber "Dev sign-in" form below the Google button, gated by `import.meta.env.DEV` so it never appears in prod builds. Uses `supabase.auth.signInWithPassword`. After `supabase db reset` (or first `supabase start`), recreate the user:
+  ```
+  ./scripts/seed-local-user.sh
+  ```
+  Defaults: `scott.t.weaver@gmail.com` / `devdev123`. The `handle_new_user` trigger auto-admins this email, so on insert the user lands as approved + admin + Weavers without further setup. Override via env: `EMAIL=other@example.com PASSWORD=hunter2 ./scripts/seed-local-user.sh`.
+
 ### Post-launch operating notes
 
 The app is live and in use — future work in this repo is shipping changes to a running system that the family depends on.

@@ -96,12 +96,17 @@ export function useAuth() {
     if (error) throw error;
   }, []);
 
+  const signInWithEmail = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  }, []);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setStage({ kind: 'signed-out' });
   }, []);
 
-  return { stage, signInWithGoogle, signOut };
+  return { stage, signInWithGoogle, signInWithEmail, signOut };
 }
 
 
