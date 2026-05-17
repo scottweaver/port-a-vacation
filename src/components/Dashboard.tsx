@@ -8,6 +8,9 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { usePacking } from '@/hooks/usePacking';
 import { useHiddenItems } from '@/hooks/useHiddenItems';
 import { useConversations } from '@/hooks/useConversations';
+import { useVersionCheck } from '@/hooks/useVersionCheck';
+import { requestNotificationPermission, showMessageNotification } from '@/lib/notifications';
+import type { Message } from '@/types/db';
 import { CATEGORIES, BOOKED_ACTIVITIES } from '@/lib/trip-data';
 import TopBar from './TopBar';
 import CountdownCard from './CountdownCard';
@@ -22,6 +25,7 @@ import AdminPanel from './AdminPanel';
 import ProgressCard from './ProgressCard';
 import PackView from './PackView';
 import ConversationModal from './ConversationModal';
+import ReleaseNotesModal from './ReleaseNotesModal';
 
 interface Props {
   session: Session;
@@ -36,6 +40,7 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
   const [tab, setTab] = useState<Tab>('trip');
   const [mode, setMode] = useState<Mode>('dashboard');
   const [activeChatItemId, setActiveChatItemId] = useState<string | null>(null);
+  const [releaseNotesVersion, setReleaseNotesVersion] = useState<string | null>(null);
 
   const { families } = useFamilies();
   const profiles = useProfiles(true);
@@ -43,7 +48,24 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
   const admin = useAdmin(profile.is_admin, session.user.id);
   const packing = usePacking(session.user.id, profile.family_id);
   const hiddenItems = useHiddenItems(session.user.id, profile.family_id);
-  const conversations = useConversations(session.user.id);
+  const versionCheck = useVersionCheck();
+
+  // Surface incoming messages from others as browser notifications when the
+  // tab is in the background. Active tabs get the in-app cascading badges
+  // instead — no point in double-signaling.
+  const handleIncomingMessage = useCallback((msg: Message) => {
+    if (!document.hidden) return;
+    if (msg.item_id === activeChatItemId) return; // user is reading this thread
+    const item = checklist.items.find((i) => i.id === msg.item_id);
+    showMessageNotification({
+      itemId: msg.item_id,
+      itemLabel: item?.label,
+      author: profiles.get(msg.author_id),
+      content: msg.content,
+    });
+  }, [activeChatItemId, checklist.items, profiles]);
+
+  const conversations = useConversations(session.user.id, handleIncomingMessage);
 
   const familyById = useMemo(
     () => new Map(families.map((f) => [f.id, f])),
@@ -54,6 +76,10 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
     setActiveChatItemId(itemId);
     conversations.markRead(itemId);
     void conversations.loadThread(itemId);
+    // Ask for browser-notification permission the first time the user
+    // engages with chat. The browser caches the answer, so subsequent calls
+    // are a no-op.
+    void requestNotificationPermission();
   }
 
   const activeChatItem = activeChatItemId
@@ -147,6 +173,15 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
         pendingCount={admin.pending.length}
         unreadMessages={totalUnread}
         onJumpToUnread={() => jumpToNextUnread('all')}
+        updateAvailable={versionCheck.updateAvailable}
+        onReload={versionCheck.reload}
+        appVersion={versionCheck.mountedVersion?.app_version ?? null}
+        buildId={versionCheck.mountedVersion?.build_id ?? null}
+        latestVersionTag={versionCheck.latestVersion?.app_version ?? null}
+        onShowReleaseNotes={() => {
+          const v = versionCheck.latestVersion?.app_version;
+          if (v && v !== 'dev') setReleaseNotesVersion(v);
+        }}
         currentTab={tab}
         onTabChange={setTab}
         onPackMode={() => setMode('pack')}
@@ -220,6 +255,13 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
           />
         )}
       </main>
+
+      {releaseNotesVersion && (
+        <ReleaseNotesModal
+          version={releaseNotesVersion}
+          onClose={() => setReleaseNotesVersion(null)}
+        />
+      )}
 
       {activeChatItem && (
         <ConversationModal

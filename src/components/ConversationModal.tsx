@@ -4,6 +4,8 @@ import type { ChecklistItem, Message, Profile } from '@/types/db';
 import { cx, firstName, relativeTime } from '@/lib/format';
 import { messageColor } from '@/lib/messageColor';
 import { linkify } from '@/lib/linkify';
+import { typingLabel } from '@/lib/typingLabel';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import EmojiPicker from './EmojiPicker';
 
 interface Props {
@@ -27,6 +29,7 @@ export default function ConversationModal({
   const [emojiOpen, setEmojiOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const { typingUsers, notifyTyping, notifyStop } = useTypingIndicator(item.id, currentUserId);
 
   function insertEmoji(emoji: string) {
     const el = inputRef.current;
@@ -70,6 +73,7 @@ export default function ConversationModal({
     if (!content) return;
     onPost(item.id, content);
     setDraft('');
+    notifyStop();
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -135,14 +139,22 @@ export default function ConversationModal({
           </div>
         </div>
 
+        <div className="h-5 px-3 text-xs italic text-slate-500 truncate border-t border-slate-100 bg-white flex items-center" aria-live="polite">
+          {typingUsers.size > 0 ? typingLabel(typingUsers, profiles) : ''}
+        </div>
+
         <form
           onSubmit={(e) => { e.preventDefault(); send(); }}
-          className="relative border-t border-slate-200 p-3 flex items-end gap-2 bg-white"
+          className="relative p-3 flex items-end gap-2 bg-white"
         >
           <textarea
             ref={inputRef}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              if (e.target.value.trim()) notifyTyping();
+              else notifyStop();
+            }}
             onKeyDown={onKeyDown}
             rows={1}
             placeholder="Write a message…"

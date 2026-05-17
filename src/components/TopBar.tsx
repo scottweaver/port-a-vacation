@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, LogOut, Shield, Home, Users as UsersIcon, Luggage, Wifi, WifiOff, RefreshCw, MessageCircle } from 'lucide-react';
+import { ChevronDown, LogOut, Shield, Home, Users as UsersIcon, Luggage, Wifi, WifiOff, RefreshCw, MessageCircle, Download, Newspaper } from 'lucide-react';
 import type { Profile, Family } from '@/types/db';
 import { cx, firstName } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
@@ -11,6 +11,12 @@ interface Props {
   pendingCount: number;
   unreadMessages: number;
   onJumpToUnread: () => void;
+  updateAvailable: boolean;
+  onReload: () => void;
+  appVersion: string | null;
+  buildId: string | null;
+  latestVersionTag: string | null;
+  onShowReleaseNotes: () => void;
   currentTab: 'trip' | 'admin';
   onTabChange: (t: 'trip' | 'admin') => void;
   onPackMode: () => void;
@@ -19,6 +25,7 @@ interface Props {
 
 export default function TopBar({
   profile, families, pendingCount, unreadMessages, onJumpToUnread,
+  updateAvailable, onReload, appVersion, buildId, latestVersionTag, onShowReleaseNotes,
   currentTab, onTabChange, onPackMode, onSignOut,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -45,12 +52,20 @@ export default function TopBar({
   }
 
   return (
-    <header className="bg-gradient-to-r from-ocean-600 via-ocean-500 to-teal-500 text-white shadow-lg sticky top-0 z-20">
-      <div className="max-w-6xl mx-auto px-4 py-3">
+    <header className="sticky top-0 z-20 shadow-lg">
+      <div className="bg-gradient-to-r from-ocean-600 via-ocean-500 to-teal-500 text-white">
+       <div className="max-w-6xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-xl md:text-2xl font-bold tracking-tight truncate">Port A 2026 🏖️</h1>
-            <p className="text-ocean-100 text-xs hidden sm:block">May 25–29 · Family Trip</p>
+            <p className="text-ocean-100 text-xs hidden sm:block">
+              May 25–29 · Family Trip
+              {appVersion && buildId && (
+                <span className="text-ocean-200/80 ml-2 tabular-nums">
+                  v{appVersion} ({buildId.slice(0, 7)})
+                </span>
+              )}
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -189,7 +204,32 @@ export default function TopBar({
             </div>
           </div>
         </div>
+       </div>
       </div>
+      {updateAvailable && (
+        <div className="w-full bg-coral-600 text-white border-t-2 border-coral-700 flex items-stretch">
+          <button
+            type="button"
+            onClick={onReload}
+            className="flex-1 hover:bg-coral-700 active:bg-coral-800 py-2.5 px-3 sm:px-4 flex items-center justify-center gap-2 text-sm font-semibold transition min-w-0"
+            title="Reload the app to pick up the latest version"
+          >
+            <Download size={16} className="flex-shrink-0" />
+            <span className="truncate">A new version is available — tap to update</span>
+          </button>
+          {latestVersionTag && latestVersionTag !== 'dev' && (
+            <button
+              type="button"
+              onClick={onShowReleaseNotes}
+              className="flex hover:bg-coral-700 active:bg-coral-800 py-2.5 px-3 sm:px-4 items-center gap-1.5 border-l-2 border-coral-700 text-sm font-semibold transition flex-shrink-0 underline underline-offset-2 decoration-coral-200"
+              title="See what's new in this update"
+            >
+              <Newspaper size={15} />
+              <span>What's new</span>
+            </button>
+          )}
+        </div>
+      )}
     </header>
   );
 }

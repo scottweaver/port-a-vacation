@@ -204,6 +204,43 @@ Local Supabase runs via the CLI in Docker (added 2026-05-17). Don't develop agai
 - `.env.development.local` (gitignored) holds the local values; Vite loads it in dev mode and it overrides `.env.local`. So `npm run dev` hits local, `npm run build` still hits prod via `.env.local`.
 - Migrations should be written, applied locally (`supabase db reset --local`), tested, then `supabase db push` to prod (forward-only).
 - **Dev sign-in:** SignInScreen renders a small amber "Dev sign-in" form below the Google button, gated by `import.meta.env.DEV` so it never appears in prod builds. Quick-pick buttons sign in as any of the seeded test users in one click; manual form is still there too.
+- **Version banner test cycle:** the update-available banner (red bar under the TopBar) has two clickable buttons: the main "tap to update" area reloads the app, and a "What's new" button on the right opens an in-app modal with release notes (fetched from `public/release-notes/<app_version>.md`). Both buttons are visible on mobile. "What's new" is suppressed when `app_version === 'dev'`. The modal falls back to a "View on GitHub" link if the version's markdown file isn't bundled.
+
+  **Release-notes single source of truth:** when shipping a new release, write `public/release-notes/<X.Y>.md`, then use that same file for the GitHub release body:
+  ```bash
+  gh release create version/3.1 --title "v3.1 — …" --notes-file public/release-notes/3.1.md
+  ```
+  The in-app modal and the GitHub release stay in sync.
+
+  The dev test cycle:
+
+  ```bash
+  # Establish baseline: write public/version.json with the current git SHA so
+  # mounted-version matches and no banner shows.
+  node scripts/write-version.mjs
+
+  # Refresh your browser. Header shows "v<tag> (<sha>)" matching version.json.
+  # No banner.
+
+  # Trigger the banner (defaults to app_version=3.1, build_id=fake-<timestamp>):
+  ./scripts/trigger-update-banner.sh
+  # Override either: ./scripts/trigger-update-banner.sh 3.1 abc1234567
+
+  # Within ~4s (POLL_INTERVAL_MS in dev), the red banner appears in your tab.
+  # Click the banner. window.location.reload() fires. The new mount fetches
+  # the fake public/version.json → header now shows v3.1 (abc1234) → no
+  # banner (mount == current).
+
+  # Cleanup:
+  node scripts/write-version.mjs   # back to current git SHA
+  ```
+
+  Alternative `./scripts/simulate-update.sh` — writes a fake, sleeps 15s, restores. Useful for verifying the **auto-clear** path (banner appears, then disappears 15s later because the poll finds the restored version matches mount). Doesn't show a header change because mount-time and post-restore values are the same.
+
+  Two-tab cascade test: trigger the banner with the manual recipe; open a second tab (regular + incognito). Both should show the banner — the first tab's poll detects, broadcasts on `app-version` Supabase channel, second tab lights up within ~100ms without waiting for its own poll.
+
+  `__BUILD_ID__` and `__APP_VERSION__` are NOT baked into the bundle — they're fetched at runtime from `/version.json` so the header reflects what the server is currently serving (which lets the click→reload→new-mount path actually change the displayed version in dev). In prod that "what the server is serving" matches the new bundle, same effect for free.
+
 - **Multi-user seeding:** `./scripts/seed-local-users.sh` creates four test users with stable UUIDs (so browser sessions survive resets) and Dicebear avatars (so the avatar code path renders something in dev):
   - `scott.t.weaver@gmail.com` / `devdev123` — admin, Weavers (auto-admin via `handle_new_user` trigger matching this email)
   - `weaver-2@test.local` / `dev` — Weavers

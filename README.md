@@ -82,6 +82,51 @@ Google OAuth callback URL doesn't change.
 
 Send the Vercel URL. Each person: Sign in with Google → "Waiting for approval" → you approve in Admin tab → they pick their family → done.
 
+## Local development
+
+```bash
+supabase start                       # local Postgres + Auth + Realtime in Docker
+supabase db reset --local            # apply migrations 0001-0006, seed defaults
+./scripts/seed-local-users.sh        # create 4 test users with fixed UUIDs + avatars
+npm run dev                          # dev server on http://localhost:5173
+```
+
+`.env.development.local` (gitignored) points the dev build at local Supabase; `.env.local` is prod. `npm run dev` uses the dev env, `npm run build` uses prod. Sign-in screen shows quick-pick buttons for the seeded test users when running in dev.
+
+## Release notes
+
+Each shipped version has release notes at `public/release-notes/<X.Y>.md`. The same file feeds two surfaces:
+
+- The in-app "What's new" modal (opened from the update banner).
+- The GitHub release body — pass `--notes-file public/release-notes/<X.Y>.md` when running `gh release create`.
+
+Write release notes targeting users (what changed for them), not engineers. Under-the-hood notes are welcome as a separate section if useful.
+
+## Testing the version-update banner
+
+The red "A new version is available" banner has two clickable buttons: the main text reloads the app; a "What's new" button on the right opens the release-notes modal. Manual test recipe in dev:
+
+```bash
+# Baseline: write the real SHA, then refresh the tab so the mount captures
+# it. Header should show "v<tag> (<sha>)" matching git HEAD; no banner.
+node scripts/write-version.mjs
+
+# Trigger banner. Default: app_version=3.1, build_id=fake-<timestamp>.
+./scripts/trigger-update-banner.sh
+# (or specify your own: ./scripts/trigger-update-banner.sh 3.1 abc1234567)
+
+# Within ~4s the banner appears. Header still shows the baseline version.
+# Click the banner. Page reloads. The new mount fetches the fake version.json
+# → header now shows v3.1 (abc1234), no banner.
+
+# Cleanup:
+node scripts/write-version.mjs
+```
+
+`./scripts/simulate-update.sh` writes a fake then auto-restores after 15s — useful for verifying the **auto-clear** path (banner appears and disappears on its own, no click needed) and the **realtime cascade** (open two tabs; the first to poll broadcasts on a Supabase channel so the second sees the banner within ~100ms instead of waiting up to 4s for its own poll).
+
+Polling: 4s in dev, 3 min in prod. Broadcast is the fast path either way.
+
 ## Troubleshooting
 
 - **"Invalid Refresh Token"**: clear cookies for the site, try again.

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase, writeQueue } from '@/lib/supabase';
 import { cache } from '@/lib/cache';
 import { subscribeReconnect } from '@/lib/online';
@@ -42,7 +42,15 @@ function hydrate(userId: string | null): State {
   };
 }
 
-export function useConversations(currentUserId: string | null) {
+export function useConversations(
+  currentUserId: string | null,
+  onMessageReceived?: (msg: Message) => void,
+) {
+  // Keep the latest callback in a ref so the realtime effect doesn't need
+  // to resubscribe each time the parent re-renders.
+  const onMessageReceivedRef = useRef(onMessageReceived);
+  useEffect(() => { onMessageReceivedRef.current = onMessageReceived; }, [onMessageReceived]);
+
   const [state, setState] = useState<State>(() => hydrate(currentUserId));
 
   useEffect(() => {
@@ -103,7 +111,8 @@ export function useConversations(currentUserId: string | null) {
 
             if (payload.eventType === 'INSERT') {
               const row = payload.new as Message;
-              if (!metadata.some((m) => m.id === row.id)) {
+              const isNew = !metadata.some((m) => m.id === row.id);
+              if (isNew) {
                 metadata.push(stripContent(row));
                 metadata.sort((a, b) => a.created_at.localeCompare(b.created_at));
               }
@@ -111,6 +120,14 @@ export function useConversations(currentUserId: string | null) {
               if (thread && !thread.some((m) => m.id === row.id)) {
                 const next = [...thread, row].sort((a, b) => a.created_at.localeCompare(b.created_at));
                 threads.set(row.item_id, next);
+              }
+              // Fire the optional incoming-message callback for messages from
+              // other users (used to drive browser notifications). Run async
+              // so we don't slow down state commit, and only on the first
+              // time we see this message id.
+              if (isNew && row.author_id !== currentUserId) {
+                const cb = onMessageReceivedRef.current;
+                if (cb) queueMicrotask(() => cb(row));
               }
             } else if (payload.eventType === 'UPDATE') {
               const row = payload.new as Message;
