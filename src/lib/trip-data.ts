@@ -139,6 +139,7 @@ export interface InfoTile {
   icon: string;
   title: string;
   body: string;
+  sources?: { label: string; href: string }[];
 }
 
 export const INFO_TILES: InfoTile[] = [
@@ -146,6 +147,15 @@ export const INFO_TILES: InfoTile[] = [
   { icon: '⛴️', title: 'Ferry',                 body: 'Free, runs 24/7. Can have 20–30 min waits in peak season. Stay in your car.' },
   { icon: '🪼', title: 'Jellyfish',             body: "Moon jellies are common — mild sting. Pack vinegar or sting relief. Avoid Portuguese man o' war (rare, blue/purple)." },
   { icon: '🏖️', title: 'Beach Driving',         body: 'You can drive & park right on the beach. Watch for soft sand near dunes. 4WD not required on hard-packed area.' },
+  {
+    icon: '🛺',
+    title: 'Golf Cart',
+    body: "Licensed driver only (16+ with valid DL) — Isaac, Cordelia, and Kai can't drive it. Everyone seated with a seat belt; no laps, no standing, no riding on the back. 15 mph speed limit on the beach — it's treated as a city street. Same $12 beach permit covers parking it on the sand. Hard-packed sand only; stay off the dunes and vegetation. DWI and open-container laws apply just like a car. No sidewalks, parks, or playgrounds. Lights on at dusk.",
+    sources: [
+      { label: 'City rules', href: 'https://cityofportaransas.org/golf-cart-information-and-regulations/' },
+      { label: 'Beach cart rules', href: 'https://www.portaransas.org/things-to-do/beach-cart-rentals/beach-cart-rules/' },
+    ],
+  },
   { icon: '🛒', title: 'Grocery',               body: 'H-E-B in Aransas Pass (before ferry) is the biggest. Smaller H-E-B in Ingleside. Stock up before the island.' },
   { icon: '📞', title: 'Emergency',             body: 'Port Aransas Police: (361) 749-6241 · Urgent care: CHRISTUS Spohn (Corpus Christi, ~30 min)' },
 ];

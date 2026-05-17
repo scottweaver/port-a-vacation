@@ -20,6 +20,21 @@ export default function InfoPanel({ userId }: { userId: string }) {
           <div key={tile.title}>
             <div className="font-semibold text-amber-900">{tile.icon} {tile.title}</div>
             <div className="text-amber-800 mt-1">{tile.body}</div>
+            {tile.sources && (
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-amber-700">
+                {tile.sources.map((s) => (
+                  <a
+                    key={s.href}
+                    href={s.href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="underline underline-offset-2 hover:text-amber-900"
+                  >
+                    {s.label} ↗
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>
