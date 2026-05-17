@@ -25,20 +25,27 @@ export function installNetworkSync(): void {
   if (installed || typeof window === 'undefined') return;
   installed = true;
 
-  window.addEventListener('online', () => {
+  window.addEventListener('online', async () => {
     notify(stateListeners);
+    // Order matters: flush our queued writes BEFORE refetching. Otherwise
+    // the refetch can race the upserts and return stale rows (for existing
+    // contributions) or no row at all (for new contributions), clobbering
+    // the user's optimistic state. Realtime can't cover the gap because
+    // its WebSocket is still mid-reconnect and won't replay missed inserts.
+    await writeQueue.flush();
     notify(reconnectListeners);
-    void writeQueue.flush();
   });
 
   window.addEventListener('offline', () => {
     notify(stateListeners);
   });
 
-  document.addEventListener('visibilitychange', () => {
+  document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState === 'visible' && navigator.onLine) {
-      // Backstop in case the 'online' event was missed while backgrounded.
-      void writeQueue.flush();
+      // Backstop for tabs woken from background where 'online' may not
+      // fire reliably. Same order: flush, then refetch.
+      await writeQueue.flush();
+      notify(reconnectListeners);
     }
   });
 }
