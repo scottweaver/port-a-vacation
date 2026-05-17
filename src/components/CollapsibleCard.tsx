@@ -7,6 +7,7 @@ interface Props {
   storageKey: string;
   userId: string;
   defaultCollapsed?: boolean;
+  forceOpen?: boolean;
   className?: string;
   id?: string;
   header: ReactNode;
@@ -19,12 +20,14 @@ export default function CollapsibleCard({
   storageKey,
   userId,
   defaultCollapsed = false,
+  forceOpen = false,
   className,
   id,
   header,
   children,
 }: Props) {
   const [collapsed, setCollapsed] = useCollapsedState(storageKey, userId, defaultCollapsed);
+  const open = forceOpen || !collapsed;
 
   // Expand programmatically when a `collapsible:expand` event fires for this
   // storageKey. Used by the "jump to next unread message" affordance so
@@ -43,7 +46,8 @@ export default function CollapsibleCard({
       <button
         type="button"
         onClick={() => setCollapsed(!collapsed)}
-        aria-expanded={!collapsed}
+        aria-expanded={open}
+        disabled={forceOpen}
         className="w-full flex items-start justify-between gap-3 text-left"
       >
         <div className="flex-1 min-w-0">{header}</div>
@@ -51,11 +55,12 @@ export default function CollapsibleCard({
           size={20}
           className={cx(
             'text-slate-400 flex-shrink-0 mt-1 transition-transform',
-            !collapsed && 'rotate-180',
+            open && 'rotate-180',
+            forceOpen && 'opacity-30',
           )}
         />
       </button>
-      {!collapsed && <div className="mt-4">{children}</div>}
+      {open && <div className="mt-4">{children}</div>}
     </section>
   );
 }

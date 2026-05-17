@@ -13,6 +13,7 @@ interface Props {
   profiles: Map<string, Profile>;
   familyById: Map<string, Family>;
   hidden: Set<string>;
+  filter: string;
   getContribution: (itemId: string, familyId: string) => Contribution | undefined;
   onAdjustQuantity: (itemId: string, familyId: string, delta: number) => Promise<void>;
   onToggleTask: (itemId: string, familyId: string) => Promise<void>;
@@ -33,12 +34,14 @@ interface Props {
 }
 
 export default function ChecklistSection({
-  category, items, families, profiles, familyById, hidden,
+  category, items, families, profiles, familyById, hidden, filter,
   getContribution, onAdjustQuantity, onToggleTask, onClaim, onUnclaim,
   onAddItem, onDeleteItem, onHide, onUnhide,
   onOpenChat, unreadByItem, messageCountByItem, unreadCategory, onJumpInCategory,
   currentUserId, myFamilyId, isAdmin,
 }: Props) {
+  const filterActive = filter.trim().length > 0;
+  const filterLower = filter.trim().toLowerCase();
   const [adding, setAdding] = useState(false);
   const [newLabel, setNewLabel] = useState('');
   const [hiddenOpen, setHiddenOpen] = useState(false);
@@ -51,9 +54,17 @@ export default function ChecklistSection({
   const { visibleItems, hiddenItems } = useMemo(() => {
     const v: ChecklistItem[] = [];
     const h: ChecklistItem[] = [];
-    for (const i of items) (hidden.has(i.id) ? h : v).push(i);
+    for (const i of items) {
+      if (filterActive) {
+        if (!i.label.toLowerCase().includes(filterLower)) continue;
+        if (hidden.has(i.id)) continue; // hidden stays hidden under filter
+        v.push(i);
+      } else {
+        (hidden.has(i.id) ? h : v).push(i);
+      }
+    }
     return { visibleItems: v, hiddenItems: h };
-  }, [items, hidden]);
+  }, [items, hidden, filterActive, filterLower]);
 
   async function handleAdd() {
     if (!newLabel.trim()) return;
@@ -71,6 +82,7 @@ export default function ChecklistSection({
       id={`cat-${category.key}`}
       storageKey={`cat:${category.key}`}
       userId={currentUserId}
+      forceOpen={filterActive}
       header={
         <>
           <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2 flex-wrap">
@@ -135,6 +147,7 @@ export default function ChecklistSection({
         </div>
       )}
 
+      {!filterActive && (
       <div className="mt-4 flex flex-col sm:flex-row gap-2">
         <input
           type="text"
@@ -169,8 +182,9 @@ export default function ChecklistSection({
           </button>
         </div>
       </div>
+      )}
 
-      {hiddenItems.length > 0 && (
+      {!filterActive && hiddenItems.length > 0 && (
         <div className="mt-3 border border-slate-200 rounded-lg overflow-hidden">
           <button
             onClick={() => setHiddenOpen((o) => !o)}

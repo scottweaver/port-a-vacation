@@ -41,6 +41,7 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
   const [mode, setMode] = useState<Mode>('dashboard');
   const [activeChatItemId, setActiveChatItemId] = useState<string | null>(null);
   const [releaseNotesVersion, setReleaseNotesVersion] = useState<string | null>(null);
+  const [filter, setFilter] = useState('');
 
   const { families } = useFamilies();
   const profiles = useProfiles(true);
@@ -112,6 +113,26 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
       return a.sort_order - b.sort_order;
     });
   }, [checklist.items]);
+
+  // Filter: case-insensitive substring against item.label. Hidden items are
+  // skipped (they stay hidden even when searching). When the filter is active
+  // we collapse the dashboard down to just the matching checklist sections —
+  // the trip-info cards above are noise when you're trying to find one item.
+  const filterTrimmed = filter.trim().toLowerCase();
+  const filterActive = filterTrimmed.length > 0;
+  const matchCountsByCategory = useMemo(() => {
+    if (!filterActive) return null;
+    const m = new Map<string, number>();
+    for (const item of checklist.items) {
+      if (hiddenItems.hidden.has(item.id)) continue;
+      if (!item.label.toLowerCase().includes(filterTrimmed)) continue;
+      m.set(item.category, (m.get(item.category) ?? 0) + 1);
+    }
+    return m;
+  }, [filterActive, filterTrimmed, checklist.items, hiddenItems.hidden]);
+  const totalMatches = matchCountsByCategory
+    ? [...matchCountsByCategory.values()].reduce((a, b) => a + b, 0)
+    : 0;
 
   // Cursor per scope ('all' for the top-bar jump button, or a category key
   // for per-category jumps). Stored in a ref because it's read-only state
@@ -186,64 +207,98 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
         onTabChange={setTab}
         onPackMode={() => setMode('pack')}
         onSignOut={onSignOut}
+        filter={filter}
+        onFilterChange={setFilter}
+        filterMatchCount={filterActive ? totalMatches : null}
+        showFilter={tab === 'trip'}
       />
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         {tab === 'trip' ? (
           <>
-            <CountdownCard />
-            <ProgressCard
-              items={checklist.items}
-              contributions={checklist.contributions}
-              families={families}
-            />
-            <WeatherCard userId={session.user.id} />
-            <TideCard userId={session.user.id} />
-            <DriveCard userId={session.user.id} />
+            {!filterActive && (
+              <>
+                <CountdownCard />
+                <ProgressCard
+                  items={checklist.items}
+                  contributions={checklist.contributions}
+                  families={families}
+                />
+                <WeatherCard userId={session.user.id} />
+                <TideCard userId={session.user.id} />
+                <DriveCard userId={session.user.id} />
 
-            {BOOKED_ACTIVITIES.map((activity) => (
-              <BookedActivityCard
-                key={activity.bookingRef ?? activity.name}
-                activity={activity}
-                userId={session.user.id}
-              />
-            ))}
+                {BOOKED_ACTIVITIES.map((activity) => (
+                  <BookedActivityCard
+                    key={activity.bookingRef ?? activity.name}
+                    activity={activity}
+                    userId={session.user.id}
+                  />
+                ))}
+              </>
+            )}
 
-            {CATEGORIES.map((cat) => (
-              <ChecklistSection
-                key={cat.key}
-                category={cat}
-                items={checklist.itemsByCategory.get(cat.key) ?? []}
-                families={families}
-                profiles={profiles}
-                familyById={familyById}
-                hidden={hiddenItems.hidden}
-                getContribution={checklist.getContribution}
-                onAdjustQuantity={checklist.adjustQuantity}
-                onToggleTask={checklist.toggleTask}
-                onClaim={checklist.claimItem}
-                onUnclaim={checklist.unclaimItem}
-                onAddItem={checklist.addCustomItem}
-                onDeleteItem={checklist.deleteCustomItem}
-                onHide={hiddenItems.hideItem}
-                onUnhide={hiddenItems.unhideItem}
-                onOpenChat={handleOpenChat}
-                unreadByItem={conversations.unreadByItem}
-                messageCountByItem={conversations.messageCountByItem}
-                unreadCategory={unreadByCategory.get(cat.key) ?? 0}
-                onJumpInCategory={() => jumpToNextUnread(cat.key)}
-                currentUserId={session.user.id}
-                myFamilyId={profile.family_id}
-                isAdmin={profile.is_admin}
-              />
-            ))}
+            {CATEGORIES.map((cat) => {
+              if (filterActive && (matchCountsByCategory?.get(cat.key) ?? 0) === 0) {
+                return null;
+              }
+              return (
+                <ChecklistSection
+                  key={cat.key}
+                  category={cat}
+                  items={checklist.itemsByCategory.get(cat.key) ?? []}
+                  families={families}
+                  profiles={profiles}
+                  familyById={familyById}
+                  hidden={hiddenItems.hidden}
+                  filter={filter}
+                  getContribution={checklist.getContribution}
+                  onAdjustQuantity={checklist.adjustQuantity}
+                  onToggleTask={checklist.toggleTask}
+                  onClaim={checklist.claimItem}
+                  onUnclaim={checklist.unclaimItem}
+                  onAddItem={checklist.addCustomItem}
+                  onDeleteItem={checklist.deleteCustomItem}
+                  onHide={hiddenItems.hideItem}
+                  onUnhide={hiddenItems.unhideItem}
+                  onOpenChat={handleOpenChat}
+                  unreadByItem={conversations.unreadByItem}
+                  messageCountByItem={conversations.messageCountByItem}
+                  unreadCategory={unreadByCategory.get(cat.key) ?? 0}
+                  onJumpInCategory={() => jumpToNextUnread(cat.key)}
+                  currentUserId={session.user.id}
+                  myFamilyId={profile.family_id}
+                  isAdmin={profile.is_admin}
+                />
+              );
+            })}
 
-            <PlacesSection userId={session.user.id} />
-            <InfoPanel userId={session.user.id} />
+            {filterActive && totalMatches === 0 && (
+              <div className="bg-white rounded-2xl shadow p-8 text-center">
+                <p className="text-slate-600 font-medium">No items match "{filter.trim()}"</p>
+                <p className="text-slate-400 text-sm mt-1">
+                  Try a different word, or clear the filter to see everything.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setFilter('')}
+                  className="mt-4 px-4 py-2 bg-ocean-600 hover:bg-ocean-700 text-white rounded-lg text-sm font-medium transition"
+                >
+                  Clear filter
+                </button>
+              </div>
+            )}
 
-            <footer className="text-center text-xs text-slate-400 py-6">
-              Have a great trip! 🌊
-            </footer>
+            {!filterActive && (
+              <>
+                <PlacesSection userId={session.user.id} />
+                <InfoPanel userId={session.user.id} />
+
+                <footer className="text-center text-xs text-slate-400 py-6">
+                  Have a great trip! 🌊
+                </footer>
+              </>
+            )}
           </>
         ) : (
           <AdminPanel
