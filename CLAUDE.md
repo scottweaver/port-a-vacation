@@ -103,25 +103,22 @@ When admin approves someone, the approved user's app re-routes from "pending" to
 - ✅ Migration applied via `supabase db push` (CLI). Verified: 3 families, 74 checklist items
 - ✅ Google OAuth configured (Cloud Console client + Supabase provider wired); family test users added in Google Cloud Console "Audience" tab
 - ✅ Local end-to-end working: Scott signs in with Google → DB trigger auto-approves + auto-admin + auto-Weaver-family → dashboard renders with Trip + Admin tabs, countdown, weather/tide tiles, 0/74 checklist
-- ⛔ NOT yet pushed to GitHub
-- ⛔ NOT yet deployed to Vercel
+- ✅ Pushed to GitHub: https://github.com/scottweaver/port-a-vacation (public repo, `main` branch)
+- ✅ Deployed to Vercel; Supabase Site URL + Redirect URLs updated to prod; Google Cloud OAuth Authorized JavaScript origin updated to prod
+- ✅ **LIVE — family members are actively using the app and adding checklist contributions** (launched 2026-05-16, T-9 days from trip)
 
-`.env.local` holds real Supabase values (gitignored). Supabase **Site URL** is currently `http://localhost:5173`; this needs to change to the Vercel production URL post-deploy (and Vercel URL added to **Redirect URLs** allow list).
+`.env.local` holds real Supabase values (gitignored). Production env vars `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` live in Vercel project settings.
 
-### Next major step: GitHub + Vercel deployment
+### Post-launch operating notes
 
-Remaining work to get the app shareable with the family:
+The app is live and in use — future work in this repo is shipping changes to a running system that the family depends on.
 
-1. Push to GitHub (no remote configured yet).
-2. Deploy to Vercel (link the repo, set `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` env vars).
-3. Update Supabase **Site URL** to the Vercel production URL, and add it to **Redirect URLs**.
-4. Update Google Cloud OAuth client: add Vercel URL to **Authorized JavaScript origins** (the redirect URI stays pointed at Supabase's `/auth/v1/callback`).
-5. Test sign-in on prod URL with Scott's account, then with another family member's account.
-
-Gotchas (some still relevant, some carried forward):
-- Google OAuth consent screen is still in **Testing** status — only emails on the test-users list can sign in. Add more there as needed; no redeploy required.
-- Realtime replication: if a table doesn't push live updates, check Supabase → Database → Replication and ensure `checklist_items`, `contributions`, `profiles` are in the `supabase_realtime` publication.
+- Vercel production URL is the canonical app URL (see Vercel dashboard → Domains tab for current value).
+- Any change to the production URL (custom domain, project rename) requires updating **three** places: Supabase Site URL, Supabase Redirect URLs, Google Cloud OAuth Authorized JavaScript origins.
+- Google OAuth consent screen is still in **Testing** status — only emails on the test-users list can sign in. Add more there as needed; no redeploy required. We don't need to verify the app (under 100 known users).
+- If a table doesn't push realtime updates, check Supabase → Database → Replication: `checklist_items`, `contributions`, `profiles` must be in the `supabase_realtime` publication.
 - Google avatar images need `referrerPolicy="no-referrer"` to load (already set in code).
+- Deployment auto-runs on push to `main` via Vercel's GitHub integration. Mind the family is using it — prefer PRs or local verification before pushing changes that touch UI or data flow.
 
 ### Things deliberately deferred / nice-to-haves
 
