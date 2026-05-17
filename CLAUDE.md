@@ -38,6 +38,7 @@ We deliberately did NOT do per-user lists. Instead:
 - **`profiles`** belong to one family (nullable until first login picks one)
 - **`checklist_items`** are shared across all families; have `tracking_type` of `'quantity'`, `'task'`, or `'claim'`
 - **`contributions`** are per-(item, family). Composite PK `(item_id, family_id)`. Quantity items use `quantity` column; task items use `done` boolean. **Claim items** are single-provider: exactly zero or one contribution row exists per item, with `done = true`. Enforced at the application layer (`useChecklist.claimItem` deletes other contributions then upserts; `unclaimItem` deletes all). RLS already permits the delete; no per-table constraint added because the trip's 8 users make race-window collisions negligible.
+- **`packing_status`** (added in migration `0004`) is **family-private** — per-(item, family) with composite PK `(item_id, family_id)`, but RLS scopes both reads AND writes to the user's own family. Other families literally cannot see your packing progress. Absent row = unpacked, present row = packed. Pack is INSERT (via supabase upsert with `ignoreDuplicates: true` so no UPDATE policy needed); unpack is DELETE. Drives the Pack mode UI.
 
 **Why:** packing is family-scoped in practice. "Did Scott bring sunscreen" is the wrong question — "did anyone bring enough sunscreen" is right. Each family edits their own row but anyone can edit anyone's (collaborative — Scott's wife can bump the Weaver number on Scott's behalf).
 
@@ -77,12 +78,32 @@ Anchor scrolling from ProgressCard category tiles preserves the `cat-<key>` id o
 
 ### Realtime UX
 
-Optimistic updates with rollback on error in `useChecklist.setContribution`. Three realtime channels:
+Optimistic updates with per-key debounced writes in `useChecklist` and `usePacking`. Quantity/task presses update local state via functional `setState` (so rapid clicks compound correctly), then a 250ms debounce per `(item, family)` key coalesces a burst into one upsert. On error, the row is refetched from the server to recover from divergence rather than rolled back (no single rollback target after coalescing). Pending writes flush on `visibilitychange === 'hidden'` and on hook unmount so a tab close mid-debounce doesn't drop data. Same pattern in `usePacking` for pack/unpack toggles, 200ms debounce.
+
+Realtime channels:
 - `profile:{userId}` (filtered to current user) — drives auth stage transitions
 - `checklist-and-contributions` (both tables, one channel) — drives the checklist UI
+- `packing-{familyId}` (filtered to own family via realtime `filter: 'family_id=eq.<uuid>'`) — drives the Pack screen
 - `admin-pending-profiles` (admin-only) — drives the admin tab
 
 When admin approves someone, the approved user's app re-routes from "pending" to "approved" within ~100ms via realtime, no refresh needed. Same with family changes.
+
+### Pack mode
+
+Day-of-departure view that's deliberately **separate from the dashboard**. Reached via the amber **Pack** button in `TopBar` (always visible for users with a family). Toggles `mode: 'dashboard' | 'pack'` state in `Dashboard.tsx`; when `'pack'`, `Dashboard` renders `<PackView>` instead of the normal `<TopBar>`+main layout. PackView has its own compact header with a back button.
+
+Two panels, mobile-first `max-w-lg`:
+- **Unpacked** (top, fixed/not-collapsible) — items the family has *committed to bring* on the dashboard that aren't yet packed, plus all per-family tasks that aren't yet done.
+- **Packed** (bottom, collapsible, **default collapsed**) — same row component, with a check icon and line-through. Tap to unpack (puts the row back in the top panel).
+
+What appears on the Pack screen:
+- Quantity items — only if my family's `contribution.quantity > 0`
+- Claim items — only if my family is the claimant (`contribution.done === true`)
+- Task items — only if my family has **ticked** the task on the planning dashboard (`contribution.done === true`). Not auto-included.
+
+"Packed" state lives uniformly in `packing_status` for all three types. The Trip-tab task tick is the **commit** step (= "we're doing this task"); the Pack-screen tick is the **execution** step (= "we actually did it / packed it"). They are independent: ticking a task on Trip makes it appear on Pack as *Unpacked* (not auto-checked); the user then has to tap it on Pack to move it to the Packed panel. Un-ticking on Trip removes it from Pack entirely; un-packing on Pack only moves it back to the Unpacked panel there.
+
+The semantic shift to watch: for task items, `contributions.done` on Trip was originally read as "we did this." With Pack mode added, it's better read as "we've committed to do this." Same column, fuller meaning. Quantity/claim semantics on `contributions` are unchanged.
 
 ---
 
@@ -94,7 +115,7 @@ When admin approves someone, the approved user's app re-routes from "pending" to
 - **Hooks own their own subscription lifecycle.** `useEffect` with `let cancelled = false` and `supabase.removeChannel(channel)` in cleanup. Always.
 - **`cx()` for class names** (in `src/lib/format.ts`) — tiny clsx replacement, no external dep
 - **No external state management** (Redux/Zustand/etc.). Hooks + lifted state has been sufficient.
-- **No routing library.** `Dashboard.tsx` uses a `useState<Tab>('trip' | 'admin')`. If deep links are ever needed, swap to react-router.
+- **No routing library.** `Dashboard.tsx` uses a `useState<Tab>('trip' | 'admin')` and a separate `useState<Mode>('dashboard' | 'pack')`. Pack mode swaps the whole post-TopBar render rather than showing as a tab. If deep links are ever needed, swap to react-router.
 
 ---
 

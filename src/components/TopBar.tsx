@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, LogOut, Shield, Home, Users as UsersIcon } from 'lucide-react';
+import { ChevronDown, LogOut, Shield, Home, Users as UsersIcon, Luggage } from 'lucide-react';
 import type { Profile, Family } from '@/types/db';
 import { cx, firstName } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
@@ -10,11 +10,12 @@ interface Props {
   pendingCount: number;
   currentTab: 'trip' | 'admin';
   onTabChange: (t: 'trip' | 'admin') => void;
+  onPackMode: () => void;
   onSignOut: () => Promise<void>;
 }
 
 export default function TopBar({
-  profile, families, pendingCount, currentTab, onTabChange, onSignOut,
+  profile, families, pendingCount, currentTab, onTabChange, onPackMode, onSignOut,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -74,6 +75,15 @@ export default function TopBar({
                 </button>
               </div>
             )}
+
+            <button
+              onClick={onPackMode}
+              className="bg-amber-400 hover:bg-amber-300 text-amber-900 rounded-md px-3 py-1.5 text-sm flex items-center gap-1.5 font-medium transition shadow-sm"
+              title="Pack mode — check off what you've packed"
+            >
+              <Luggage size={14} />
+              <span className="hidden sm:inline">Pack</span>
+            </button>
 
             <div className="relative" ref={menuRef}>
               <button

@@ -5,6 +5,7 @@ import { useFamilies } from '@/hooks/useFamilies';
 import { useChecklist } from '@/hooks/useChecklist';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useAdmin } from '@/hooks/useAdmin';
+import { usePacking } from '@/hooks/usePacking';
 import { CATEGORIES, BOOKED_ACTIVITIES } from '@/lib/trip-data';
 import TopBar from './TopBar';
 import CountdownCard from './CountdownCard';
@@ -17,6 +18,7 @@ import PlacesSection from './PlacesSection';
 import InfoPanel from './InfoPanel';
 import AdminPanel from './AdminPanel';
 import ProgressCard from './ProgressCard';
+import PackView from './PackView';
 
 interface Props {
   session: Session;
@@ -25,19 +27,39 @@ interface Props {
 }
 
 type Tab = 'trip' | 'admin';
+type Mode = 'dashboard' | 'pack';
 
 export default function Dashboard({ session, profile, onSignOut }: Props) {
   const [tab, setTab] = useState<Tab>('trip');
+  const [mode, setMode] = useState<Mode>('dashboard');
 
   const { families } = useFamilies();
   const profiles = useProfiles(true);
   const checklist = useChecklist(session.user.id);
   const admin = useAdmin(profile.is_admin, session.user.id);
+  const packing = usePacking(session.user.id, profile.family_id);
 
   const familyById = useMemo(
     () => new Map(families.map((f) => [f.id, f])),
     [families],
   );
+
+  if (mode === 'pack' && profile.family_id) {
+    const myFamily = familyById.get(profile.family_id);
+    if (myFamily) {
+      return (
+        <PackView
+          items={checklist.items}
+          contributions={checklist.contributions}
+          packed={packing.packed}
+          myFamily={myFamily}
+          currentUserId={session.user.id}
+          onTogglePacked={packing.togglePacked}
+          onExit={() => setMode('dashboard')}
+        />
+      );
+    }
+  }
 
   return (
     <div className="min-h-screen">
@@ -47,6 +69,7 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
         pendingCount={admin.pending.length}
         currentTab={tab}
         onTabChange={setTab}
+        onPackMode={() => setMode('pack')}
         onSignOut={onSignOut}
       />
 
@@ -112,5 +135,3 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
     </div>
   );
 }
-
-

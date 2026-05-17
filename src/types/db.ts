@@ -43,4 +43,11 @@ export interface Contribution {
   updated_at: string;
 }
 
+export interface PackingStatus {
+  item_id: string;
+  family_id: string;
+  updated_by: string | null;
+  updated_at: string;
+}
+
 
