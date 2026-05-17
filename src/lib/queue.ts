@@ -8,7 +8,7 @@
 // touching the supabase client.
 
 import type { Cache } from './cache';
-import type { ChecklistItem, Contribution, PackingStatus } from '@/types/db';
+import type { ChecklistItem, Contribution, HiddenItem, PackingStatus } from '@/types/db';
 
 export type QueueOp =
   | { table: 'contributions'; op: 'upsert'; payload: Contribution }
@@ -16,6 +16,8 @@ export type QueueOp =
   | { table: 'contributions'; op: 'deleteByItem'; key: { item_id: string } }
   | { table: 'packing_status'; op: 'upsert'; payload: PackingStatus }
   | { table: 'packing_status'; op: 'delete'; key: { item_id: string; family_id: string } }
+  | { table: 'hidden_items'; op: 'upsert'; payload: HiddenItem }
+  | { table: 'hidden_items'; op: 'delete'; key: { item_id: string; family_id: string } }
   | { table: 'checklist_items'; op: 'insert'; payload: ChecklistItem }
   | { table: 'checklist_items'; op: 'delete'; key: { id: string } };
 

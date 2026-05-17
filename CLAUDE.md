@@ -40,6 +40,7 @@ We deliberately did NOT do per-user lists. Instead:
 - **`checklist_items`** are shared across all families; have `tracking_type` of `'quantity'`, `'task'`, or `'claim'`
 - **`contributions`** are per-(item, family). Composite PK `(item_id, family_id)`. Quantity items use `quantity` column; task items use `done` boolean. **Claim items** are single-provider: exactly zero or one contribution row exists per item, with `done = true`. Enforced at the application layer (`useChecklist.claimItem` deletes other contributions then upserts; `unclaimItem` deletes all). RLS already permits the delete; no per-table constraint added because the trip's 8 users make race-window collisions negligible.
 - **`packing_status`** (added in migration `0004`) is **family-private** — per-(item, family) with composite PK `(item_id, family_id)`, but RLS scopes both reads AND writes to the user's own family. Other families literally cannot see your packing progress. Absent row = unpacked, present row = packed. Pack is INSERT (via supabase upsert with `ignoreDuplicates: true` so no UPDATE policy needed); unpack is DELETE. Drives the Pack mode UI.
+- **`hidden_items`** (added in migration `0005`) is **family-private** — same shape and family-scoped RLS as `packing_status`. Absent row = visible for this family; present row = hidden. Drives the per-category "Hidden items" subsection in `ChecklistSection` (default collapsed, shown only when N > 0). PackView also filters hidden items so hide-everywhere is the consistent UX.
 
 **Why:** packing is family-scoped in practice. "Did Scott bring sunscreen" is the wrong question — "did anyone bring enough sunscreen" is right. Each family edits their own row but anyone can edit anyone's (collaborative — Scott's wife can bump the Weaver number on Scott's behalf).
 
@@ -153,6 +154,7 @@ The semantic shift to watch: for task items, `contributions.done` on Trip was or
 
 - **`version/1.0`** (launched 2026-05-16, commit `8757eea`) — initial release. Pack mode added on the same tag. Family members began using the app actively.
 - **`version/2.0`** (launched 2026-05-17, commit `e628181`) — offline tolerance + Online/Offline pill + local-Supabase dev environment + Vitest. Schema unchanged since v1.0; entirely client-side work.
+- **`version/2.1`** (launched 2026-05-17) — family-private hide list. Migration `0005` adds `hidden_items`. New per-category "Hidden items" subsection in `ChecklistSection`. `useHiddenItems` mirrors the `usePacking` pattern (family-scoped Set, cache hydration, queue-routed writes, realtime channel filtered to own family). Pack screen also filters hidden items.
 
 ### Project state (current)
 

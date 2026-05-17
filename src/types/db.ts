@@ -50,4 +50,11 @@ export interface PackingStatus {
   updated_at: string;
 }
 
+export interface HiddenItem {
+  item_id: string;
+  family_id: string;
+  hidden_by: string | null;
+  hidden_at: string;
+}
+
 

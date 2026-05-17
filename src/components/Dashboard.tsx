@@ -6,6 +6,7 @@ import { useChecklist } from '@/hooks/useChecklist';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useAdmin } from '@/hooks/useAdmin';
 import { usePacking } from '@/hooks/usePacking';
+import { useHiddenItems } from '@/hooks/useHiddenItems';
 import { CATEGORIES, BOOKED_ACTIVITIES } from '@/lib/trip-data';
 import TopBar from './TopBar';
 import CountdownCard from './CountdownCard';
@@ -38,6 +39,7 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
   const checklist = useChecklist(session.user.id);
   const admin = useAdmin(profile.is_admin, session.user.id);
   const packing = usePacking(session.user.id, profile.family_id);
+  const hiddenItems = useHiddenItems(session.user.id, profile.family_id);
 
   const familyById = useMemo(
     () => new Map(families.map((f) => [f.id, f])),
@@ -52,6 +54,7 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
           items={checklist.items}
           contributions={checklist.contributions}
           packed={packing.packed}
+          hidden={hiddenItems.hidden}
           myFamily={myFamily}
           currentUserId={session.user.id}
           onTogglePacked={packing.togglePacked}
@@ -102,6 +105,7 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
                 families={families}
                 profiles={profiles}
                 familyById={familyById}
+                hidden={hiddenItems.hidden}
                 getContribution={checklist.getContribution}
                 onAdjustQuantity={checklist.adjustQuantity}
                 onToggleTask={checklist.toggleTask}
@@ -109,6 +113,8 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
                 onUnclaim={checklist.unclaimItem}
                 onAddItem={checklist.addCustomItem}
                 onDeleteItem={checklist.deleteCustomItem}
+                onHide={hiddenItems.hideItem}
+                onUnhide={hiddenItems.unhideItem}
                 currentUserId={session.user.id}
                 myFamilyId={profile.family_id}
                 isAdmin={profile.is_admin}

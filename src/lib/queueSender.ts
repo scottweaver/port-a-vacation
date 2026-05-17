@@ -58,6 +58,20 @@ async function execute(
       .eq('family_id', op.key.family_id);
     return error;
   }
+  if (op.table === 'hidden_items' && op.op === 'upsert') {
+    const { error } = await client
+      .from('hidden_items')
+      .upsert(op.payload, { onConflict: 'item_id,family_id', ignoreDuplicates: true });
+    return error;
+  }
+  if (op.table === 'hidden_items' && op.op === 'delete') {
+    const { error } = await client
+      .from('hidden_items')
+      .delete()
+      .eq('item_id', op.key.item_id)
+      .eq('family_id', op.key.family_id);
+    return error;
+  }
   if (op.table === 'checklist_items' && op.op === 'insert') {
     const { error } = await client
       .from('checklist_items')

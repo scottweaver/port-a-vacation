@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Loader2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Plus, Loader2, ChevronRight, ChevronDown, Eye } from 'lucide-react';
 import type { ChecklistItem, Contribution, Family, Profile, TrackingType } from '@/types/db';
 import type { CategoryMeta } from '@/lib/trip-data';
 import { cx } from '@/lib/format';
@@ -12,6 +12,7 @@ interface Props {
   families: Family[];
   profiles: Map<string, Profile>;
   familyById: Map<string, Family>;
+  hidden: Set<string>;
   getContribution: (itemId: string, familyId: string) => Contribution | undefined;
   onAdjustQuantity: (itemId: string, familyId: string, delta: number) => Promise<void>;
   onToggleTask: (itemId: string, familyId: string) => Promise<void>;
@@ -19,23 +20,34 @@ interface Props {
   onUnclaim: (itemId: string) => Promise<void>;
   onAddItem: (category: string, label: string, trackingType: TrackingType) => Promise<ChecklistItem>;
   onDeleteItem: (itemId: string) => Promise<void>;
+  onHide: (itemId: string) => void;
+  onUnhide: (itemId: string) => void;
   currentUserId: string;
   myFamilyId: string | null;
   isAdmin: boolean;
 }
 
 export default function ChecklistSection({
-  category, items, families, profiles, familyById,
-  getContribution, onAdjustQuantity, onToggleTask, onClaim, onUnclaim, onAddItem, onDeleteItem,
+  category, items, families, profiles, familyById, hidden,
+  getContribution, onAdjustQuantity, onToggleTask, onClaim, onUnclaim,
+  onAddItem, onDeleteItem, onHide, onUnhide,
   currentUserId, myFamilyId, isAdmin,
 }: Props) {
   const [adding, setAdding] = useState(false);
   const [newLabel, setNewLabel] = useState('');
+  const [hiddenOpen, setHiddenOpen] = useState(false);
   const [newType, setNewType] = useState<TrackingType>(() => {
     if (items.length === 0) return 'quantity';
     const taskCount = items.filter((i) => i.tracking_type === 'task').length;
     return taskCount > items.length / 2 ? 'task' : 'quantity';
   });
+
+  const { visibleItems, hiddenItems } = useMemo(() => {
+    const v: ChecklistItem[] = [];
+    const h: ChecklistItem[] = [];
+    for (const i of items) (hidden.has(i.id) ? h : v).push(i);
+    return { visibleItems: v, hiddenItems: h };
+  }, [items, hidden]);
 
   async function handleAdd() {
     if (!newLabel.trim()) return;
@@ -62,13 +74,17 @@ export default function ChecklistSection({
         </>
       }
     >
-      {items.length === 0 ? (
+      {visibleItems.length === 0 && hiddenItems.length === 0 ? (
         <div className="text-sm text-slate-400 italic py-4 text-center">
           No items yet. Add one below to get started.
         </div>
+      ) : visibleItems.length === 0 ? (
+        <div className="text-sm text-slate-400 italic py-4 text-center">
+          All items in this category are hidden. Unhide below to bring them back.
+        </div>
       ) : (
         <div className="divide-y divide-slate-100">
-          {items.map((item) => (
+          {visibleItems.map((item) => (
             <ChecklistRow
               key={item.id}
               item={item}
@@ -81,6 +97,7 @@ export default function ChecklistSection({
               onClaim={onClaim}
               onUnclaim={onUnclaim}
               onDelete={onDeleteItem}
+              onHide={onHide}
               currentUserId={currentUserId}
               myFamilyId={myFamilyId}
               isAdmin={isAdmin}
@@ -123,6 +140,66 @@ export default function ChecklistSection({
           </button>
         </div>
       </div>
+
+      {hiddenItems.length > 0 && (
+        <div className="mt-3 border border-slate-200 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setHiddenOpen((o) => !o)}
+            className="w-full px-3 py-2 flex items-center justify-between hover:bg-slate-50 transition"
+          >
+            <div className="flex items-center gap-1.5 text-sm font-medium text-slate-600">
+              {hiddenOpen ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
+              <span>Hidden items</span>
+            </div>
+            <span className="text-xs font-medium tabular-nums text-slate-500">{hiddenItems.length}</span>
+          </button>
+          {hiddenOpen && (
+            <ul className="border-t border-slate-100 divide-y divide-slate-100">
+              {hiddenItems.map((item) => (
+                <HiddenRow
+                  key={item.id}
+                  item={item}
+                  isAdmin={isAdmin}
+                  onUnhide={onUnhide}
+                  onDelete={onDeleteItem}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </CollapsibleCard>
+  );
+}
+
+function HiddenRow({
+  item, isAdmin, onUnhide, onDelete,
+}: {
+  item: ChecklistItem;
+  isAdmin: boolean;
+  onUnhide: (itemId: string) => void;
+  onDelete: (itemId: string) => Promise<void>;
+}) {
+  return (
+    <li className="px-3 py-2 flex items-center gap-2 text-sm">
+      <span className="flex-1 text-slate-500 truncate">{item.label}</span>
+      <button
+        onClick={() => onUnhide(item.id)}
+        className="text-slate-400 hover:text-ocean-600 p-1 rounded transition flex items-center gap-1 text-xs font-medium"
+        title="Unhide"
+      >
+        <Eye size={14} />
+        <span className="hidden sm:inline">Unhide</span>
+      </button>
+      {(!item.is_default || isAdmin) && (
+        <button
+          onClick={() => onDelete(item.id)}
+          className="text-slate-300 hover:text-coral-500 p-1 rounded transition"
+          title={item.is_default ? 'Remove (admin)' : 'Remove'}
+        >
+          <span className="text-base leading-none">×</span>
+        </button>
+      )}
+    </li>
   );
 }

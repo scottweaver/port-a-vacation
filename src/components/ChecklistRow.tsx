@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import { Minus, Plus, X, Check, Circle, Hand } from 'lucide-react';
+import { Minus, Plus, X, Check, Circle, Hand, EyeOff } from 'lucide-react';
 import type { ChecklistItem, Contribution, Family, Profile } from '@/types/db';
 import { cx, firstName, relativeTime } from '@/lib/format';
 
@@ -14,6 +14,7 @@ interface Props {
   onClaim: (itemId: string, familyId: string) => Promise<void>;
   onUnclaim: (itemId: string) => Promise<void>;
   onDelete: (itemId: string) => Promise<void>;
+  onHide: (itemId: string) => void;
   currentUserId: string;
   myFamilyId: string | null;
   isAdmin: boolean;
@@ -23,7 +24,7 @@ const stripThe = (name: string) => name.replace(/^The\s+/i, '');
 
 export default function ChecklistRow({
   item, families, profiles, familyById,
-  getContribution, onAdjustQuantity, onToggleTask, onClaim, onUnclaim, onDelete,
+  getContribution, onAdjustQuantity, onToggleTask, onClaim, onUnclaim, onDelete, onHide,
   myFamilyId, isAdmin,
 }: Props) {
   const [deleteConfirming, setDeleteConfirming] = useState(false);
@@ -86,25 +87,34 @@ export default function ChecklistRow({
           )}
         </div>
 
-        {(!item.is_default || isAdmin) && (
+        <div className="flex items-center gap-0.5 flex-shrink-0">
           <button
-            onClick={() => (deleteConfirming ? onDelete(item.id) : setDeleteConfirming(true))}
-            onBlur={() => setDeleteConfirming(false)}
-            className={cx(
-              'opacity-0 group-hover:opacity-100 sm:opacity-100 p-1 rounded transition flex-shrink-0',
-              deleteConfirming ? 'text-coral-600 bg-coral-50' : 'text-slate-300 hover:text-coral-500',
-            )}
-            title={
-              deleteConfirming
-                ? 'Click again to confirm'
-                : item.is_default
-                  ? 'Remove (admin)'
-                  : 'Remove'
-            }
+            onClick={() => onHide(item.id)}
+            className="opacity-0 group-hover:opacity-100 sm:opacity-100 p-1 rounded transition text-slate-300 hover:text-slate-600"
+            title="Hide from your family's planning view"
           >
-            <X size={16} />
+            <EyeOff size={16} />
           </button>
-        )}
+          {(!item.is_default || isAdmin) && (
+            <button
+              onClick={() => (deleteConfirming ? onDelete(item.id) : setDeleteConfirming(true))}
+              onBlur={() => setDeleteConfirming(false)}
+              className={cx(
+                'opacity-0 group-hover:opacity-100 sm:opacity-100 p-1 rounded transition',
+                deleteConfirming ? 'text-coral-600 bg-coral-50' : 'text-slate-300 hover:text-coral-500',
+              )}
+              title={
+                deleteConfirming
+                  ? 'Click again to confirm'
+                  : item.is_default
+                    ? 'Remove (admin)'
+                    : 'Remove'
+              }
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
       </div>
 
       {item.tracking_type === 'claim' ? (

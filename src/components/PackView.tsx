@@ -8,6 +8,7 @@ interface Props {
   items: ChecklistItem[];
   contributions: Map<string, Contribution>;
   packed: Set<string>;
+  hidden: Set<string>;
   myFamily: Family;
   currentUserId: string;
   onTogglePacked: (itemId: string) => void;
@@ -33,7 +34,7 @@ function compareRows(a: PackRow, b: PackRow) {
 }
 
 export default function PackView({
-  items, contributions, packed, myFamily, currentUserId,
+  items, contributions, packed, hidden, myFamily, currentUserId,
   onTogglePacked, onExit,
 }: Props) {
   void currentUserId;
@@ -42,6 +43,7 @@ export default function PackView({
   const rows = useMemo<PackRow[]>(() => {
     const result: PackRow[] = [];
     for (const item of items) {
+      if (hidden.has(item.id)) continue;
       const myContrib = contributions.get(contribKey(item.id, myFamily.id));
       if (item.tracking_type === 'quantity') {
         const qty = myContrib?.quantity ?? 0;
@@ -62,7 +64,7 @@ export default function PackView({
     }
     result.sort(compareRows);
     return result;
-  }, [items, contributions, packed, myFamily.id]);
+  }, [items, contributions, packed, hidden, myFamily.id]);
 
   const unpacked = rows.filter((r) => !r.isPacked);
   const packedRows = rows.filter((r) => r.isPacked);
