@@ -82,6 +82,8 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
                 getContribution={checklist.getContribution}
                 onAdjustQuantity={checklist.adjustQuantity}
                 onToggleTask={checklist.toggleTask}
+                onClaim={checklist.claimItem}
+                onUnclaim={checklist.unclaimItem}
                 onAddItem={checklist.addCustomItem}
                 onDeleteItem={checklist.deleteCustomItem}
                 currentUserId={session.user.id}

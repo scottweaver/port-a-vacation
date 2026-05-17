@@ -157,6 +157,100 @@ export function useChecklist(currentUserId: string | null) {
     [setContribution, state.contributions],
   );
 
+  const claimItem = useCallback(
+    async (itemId: string, familyId: string) => {
+      if (!currentUserId) throw new Error('Not signed in');
+
+      const priorByFamily = new Map<string, Contribution>();
+      for (const c of state.contributions.values()) {
+        if (c.item_id === itemId) priorByFamily.set(c.family_id, c);
+      }
+
+      const optimistic: Contribution = {
+        item_id: itemId,
+        family_id: familyId,
+        quantity: 0,
+        done: true,
+        updated_by: currentUserId,
+        updated_at: new Date().toISOString(),
+      };
+
+      setState((s) => {
+        const contributions = new Map(s.contributions);
+        for (const fid of priorByFamily.keys()) {
+          contributions.delete(contribKey(itemId, fid));
+        }
+        contributions.set(contribKey(itemId, familyId), optimistic);
+        return { ...s, contributions };
+      });
+
+      const otherFamilyIds = [...priorByFamily.keys()].filter((fid) => fid !== familyId);
+      if (otherFamilyIds.length > 0) {
+        const { error: delErr } = await supabase
+          .from('contributions')
+          .delete()
+          .eq('item_id', itemId)
+          .in('family_id', otherFamilyIds);
+        if (delErr) {
+          setState((s) => {
+            const contributions = new Map(s.contributions);
+            for (const [fid, prior] of priorByFamily) {
+              contributions.set(contribKey(itemId, fid), prior);
+            }
+            return { ...s, contributions, error: delErr.message };
+          });
+          throw delErr;
+        }
+      }
+
+      const { error: upsertErr } = await supabase
+        .from('contributions')
+        .upsert(optimistic, { onConflict: 'item_id,family_id' });
+      if (upsertErr) {
+        setState((s) => {
+          const contributions = new Map(s.contributions);
+          for (const [fid, prior] of priorByFamily) {
+            contributions.set(contribKey(itemId, fid), prior);
+          }
+          if (!priorByFamily.has(familyId)) contributions.delete(contribKey(itemId, familyId));
+          return { ...s, contributions, error: upsertErr.message };
+        });
+        throw upsertErr;
+      }
+    },
+    [currentUserId, state.contributions],
+  );
+
+  const unclaimItem = useCallback(
+    async (itemId: string) => {
+      const prior = new Map<string, Contribution>();
+      for (const c of state.contributions.values()) {
+        if (c.item_id === itemId) prior.set(c.family_id, c);
+      }
+
+      setState((s) => {
+        const contributions = new Map(s.contributions);
+        for (const fid of prior.keys()) {
+          contributions.delete(contribKey(itemId, fid));
+        }
+        return { ...s, contributions };
+      });
+
+      const { error } = await supabase.from('contributions').delete().eq('item_id', itemId);
+      if (error) {
+        setState((s) => {
+          const contributions = new Map(s.contributions);
+          for (const [fid, p] of prior) {
+            contributions.set(contribKey(itemId, fid), p);
+          }
+          return { ...s, contributions, error: error.message };
+        });
+        throw error;
+      }
+    },
+    [state.contributions],
+  );
+
   const addCustomItem = useCallback(
     async (category: string, label: string, trackingType: TrackingType) => {
       if (!currentUserId) throw new Error('Not signed in');
@@ -215,6 +309,8 @@ export function useChecklist(currentUserId: string | null) {
     setContribution,
     adjustQuantity,
     toggleTask,
+    claimItem,
+    unclaimItem,
     addCustomItem,
     deleteCustomItem,
   };

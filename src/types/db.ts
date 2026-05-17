@@ -1,5 +1,5 @@
 export type ProfileStatus = 'pending' | 'approved' | 'denied';
-export type TrackingType = 'quantity' | 'task';
+export type TrackingType = 'quantity' | 'task' | 'claim';
 export type Category = 'beach' | 'clothing' | 'car' | 'house' | 'documents' | string;
 
 export interface Family {

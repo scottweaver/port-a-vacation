@@ -36,8 +36,8 @@ We deliberately did NOT do per-user lists. Instead:
 
 - **`families`** (3 rows: Weavers, Ramirezes, Titsworths)
 - **`profiles`** belong to one family (nullable until first login picks one)
-- **`checklist_items`** are shared across all families; have `tracking_type` of `'quantity'` or `'task'`
-- **`contributions`** are per-(item, family). Composite PK `(item_id, family_id)`. Quantity items use `quantity` column; task items use `done` boolean.
+- **`checklist_items`** are shared across all families; have `tracking_type` of `'quantity'`, `'task'`, or `'claim'`
+- **`contributions`** are per-(item, family). Composite PK `(item_id, family_id)`. Quantity items use `quantity` column; task items use `done` boolean. **Claim items** are single-provider: exactly zero or one contribution row exists per item, with `done = true`. Enforced at the application layer (`useChecklist.claimItem` deletes other contributions then upserts; `unclaimItem` deletes all). RLS already permits the delete; no per-table constraint added because the trip's 8 users make race-window collisions negligible.
 
 **Why:** packing is family-scoped in practice. "Did Scott bring sunscreen" is the wrong question — "did anyone bring enough sunscreen" is right. Each family edits their own row but anyone can edit anyone's (collaborative — Scott's wife can bump the Weaver number on Scott's behalf).
 

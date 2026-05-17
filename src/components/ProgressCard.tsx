@@ -22,12 +22,15 @@ export default function ProgressCard({ items, contributions, families }: Props) 
       for (const f of families) {
         const c = contributions.get(`${item.id}::${f.id}`);
         if (!c) continue;
-        if (item.tracking_type === 'task' ? c.done : c.quantity > 0) {
+        if (item.tracking_type === 'quantity' ? c.quantity > 0 : c.done) {
           satisfied += 1;
         }
       }
 
-      const covered = cat.scope === 'shared' ? satisfied >= 1 : satisfied >= familyCount;
+      // Claim items are always single-provider: covered when any family has claimed.
+      const covered = item.tracking_type === 'claim'
+        ? satisfied >= 1
+        : cat.scope === 'shared' ? satisfied >= 1 : satisfied >= familyCount;
       const bucket = byCategory[item.category] ?? { total: 0, covered: 0 };
       bucket.total += 1;
       if (covered) bucket.covered += 1;

@@ -15,6 +15,8 @@ interface Props {
   getContribution: (itemId: string, familyId: string) => Contribution | undefined;
   onAdjustQuantity: (itemId: string, familyId: string, delta: number) => Promise<void>;
   onToggleTask: (itemId: string, familyId: string) => Promise<void>;
+  onClaim: (itemId: string, familyId: string) => Promise<void>;
+  onUnclaim: (itemId: string) => Promise<void>;
   onAddItem: (category: string, label: string, trackingType: TrackingType) => Promise<ChecklistItem>;
   onDeleteItem: (itemId: string) => Promise<void>;
   currentUserId: string;
@@ -24,7 +26,7 @@ interface Props {
 
 export default function ChecklistSection({
   category, items, families, profiles, familyById,
-  getContribution, onAdjustQuantity, onToggleTask, onAddItem, onDeleteItem,
+  getContribution, onAdjustQuantity, onToggleTask, onClaim, onUnclaim, onAddItem, onDeleteItem,
   currentUserId, myFamilyId, isAdmin,
 }: Props) {
   const [adding, setAdding] = useState(false);
@@ -76,6 +78,8 @@ export default function ChecklistSection({
               getContribution={getContribution}
               onAdjustQuantity={onAdjustQuantity}
               onToggleTask={onToggleTask}
+              onClaim={onClaim}
+              onUnclaim={onUnclaim}
               onDelete={onDeleteItem}
               currentUserId={currentUserId}
               myFamilyId={myFamilyId}
@@ -102,6 +106,7 @@ export default function ChecklistSection({
           >
             <option value="quantity">Count</option>
             <option value="task">Task</option>
+            <option value="claim">Provided</option>
           </select>
           <button
             onClick={handleAdd}

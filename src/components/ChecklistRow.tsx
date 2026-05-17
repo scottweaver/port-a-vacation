@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Minus, Plus, X, Check, Circle } from 'lucide-react';
+import { Minus, Plus, X, Check, Circle, Hand } from 'lucide-react';
 import type { ChecklistItem, Contribution, Family, Profile } from '@/types/db';
 import { cx, firstName, relativeTime } from '@/lib/format';
 
@@ -11,18 +11,23 @@ interface Props {
   getContribution: (itemId: string, familyId: string) => Contribution | undefined;
   onAdjustQuantity: (itemId: string, familyId: string, delta: number) => Promise<void>;
   onToggleTask: (itemId: string, familyId: string) => Promise<void>;
+  onClaim: (itemId: string, familyId: string) => Promise<void>;
+  onUnclaim: (itemId: string) => Promise<void>;
   onDelete: (itemId: string) => Promise<void>;
   currentUserId: string;
   myFamilyId: string | null;
   isAdmin: boolean;
 }
 
+const stripThe = (name: string) => name.replace(/^The\s+/i, '');
+
 export default function ChecklistRow({
   item, families, profiles, familyById,
-  getContribution, onAdjustQuantity, onToggleTask, onDelete,
+  getContribution, onAdjustQuantity, onToggleTask, onClaim, onUnclaim, onDelete,
   myFamilyId, isAdmin,
 }: Props) {
-  const [confirming, setConfirming] = useState(false);
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
+  const [unclaimConfirming, setUnclaimConfirming] = useState(false);
 
   const allContribs = families
     .map((f) => getContribution(item.id, f.id))
@@ -30,14 +35,21 @@ export default function ChecklistRow({
 
   let summary = '';
   let isDone = false;
+  let claimingFamily: Family | undefined;
+
   if (item.tracking_type === 'quantity') {
     const total = allContribs.reduce((s, c) => s + c.quantity, 0);
     summary = total > 0 ? `${total} total` : '';
     isDone = total > 0;
-  } else {
+  } else if (item.tracking_type === 'task') {
     const doneFamilies = allContribs.filter((c) => c.done).length;
     summary = `${doneFamilies}/${families.length}`;
     isDone = doneFamilies === families.length;
+  } else {
+    const claimContrib = allContribs.find((c) => c.done);
+    claimingFamily = claimContrib ? familyById.get(claimContrib.family_id) : undefined;
+    summary = claimingFamily ? 'Provided' : '';
+    isDone = !!claimingFamily;
   }
 
   const latest = allContribs
@@ -76,14 +88,14 @@ export default function ChecklistRow({
 
         {(!item.is_default || isAdmin) && (
           <button
-            onClick={() => (confirming ? onDelete(item.id) : setConfirming(true))}
-            onBlur={() => setConfirming(false)}
+            onClick={() => (deleteConfirming ? onDelete(item.id) : setDeleteConfirming(true))}
+            onBlur={() => setDeleteConfirming(false)}
             className={cx(
               'opacity-0 group-hover:opacity-100 sm:opacity-100 p-1 rounded transition flex-shrink-0',
-              confirming ? 'text-coral-600 bg-coral-50' : 'text-slate-300 hover:text-coral-500',
+              deleteConfirming ? 'text-coral-600 bg-coral-50' : 'text-slate-300 hover:text-coral-500',
             )}
             title={
-              confirming
+              deleteConfirming
                 ? 'Click again to confirm'
                 : item.is_default
                   ? 'Remove (admin)'
@@ -95,25 +107,87 @@ export default function ChecklistRow({
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mt-2">
-        {families.map((family) => {
-          const contrib = getContribution(item.id, family.id);
-          const isMine = family.id === myFamilyId;
-          return (
-            <FamilyControl
-              key={family.id}
-              family={family}
-              isMine={isMine}
-              tracking={item.tracking_type}
-              quantity={contrib?.quantity ?? 0}
-              done={contrib?.done ?? false}
-              onAdjust={(delta) => onAdjustQuantity(item.id, family.id, delta)}
-              onToggle={() => onToggleTask(item.id, family.id)}
-            />
-          );
-        })}
-      </div>
+      {item.tracking_type === 'claim' ? (
+        claimingFamily ? (
+          <button
+            onClick={() => (unclaimConfirming ? onUnclaim(item.id) : setUnclaimConfirming(true))}
+            onBlur={() => setUnclaimConfirming(false)}
+            className={cx(
+              'mt-2 w-full rounded-lg border p-2 flex items-center justify-center gap-2 transition text-sm font-medium',
+              unclaimConfirming
+                ? 'bg-coral-50 border-coral-200 text-coral-700'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100',
+              claimingFamily.id === myFamilyId && !unclaimConfirming && 'ring-1 ring-ocean-300',
+            )}
+            title={unclaimConfirming ? 'Click again to release' : 'Click to release'}
+          >
+            <Check size={16} className="flex-shrink-0" />
+            <span>
+              {unclaimConfirming
+                ? `Tap again to release`
+                : `Provided by the ${stripThe(claimingFamily.display_name)}`}
+            </span>
+          </button>
+        ) : (
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            {families.map((family) => (
+              <ClaimButton
+                key={family.id}
+                family={family}
+                isMine={family.id === myFamilyId}
+                onClaim={() => onClaim(item.id, family.id)}
+              />
+            ))}
+          </div>
+        )
+      ) : (
+        <div className="grid grid-cols-3 gap-2 mt-2">
+          {families.map((family) => {
+            const contrib = getContribution(item.id, family.id);
+            const isMine = family.id === myFamilyId;
+            return (
+              <FamilyControl
+                key={family.id}
+                family={family}
+                isMine={isMine}
+                tracking={item.tracking_type}
+                quantity={contrib?.quantity ?? 0}
+                done={contrib?.done ?? false}
+                onAdjust={(delta) => onAdjustQuantity(item.id, family.id, delta)}
+                onToggle={() => onToggleTask(item.id, family.id)}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
+  );
+}
+
+function ClaimButton({
+  family, isMine, onClaim,
+}: {
+  family: Family;
+  isMine: boolean;
+  onClaim: () => Promise<void>;
+}) {
+  const short = stripThe(family.display_name);
+  return (
+    <button
+      onClick={onClaim}
+      className={cx(
+        'rounded-lg border p-2 flex items-center justify-between gap-2 transition',
+        'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700',
+        isMine && 'ring-1 ring-ocean-300',
+      )}
+      title={`Claim for ${short}`}
+    >
+      <div className="text-xs truncate flex items-center gap-1">
+        {isMine && <span className="text-ocean-600">●</span>}
+        <span className="truncate">{short}</span>
+      </div>
+      <Hand size={16} className="text-slate-400 flex-shrink-0" />
+    </button>
   );
 }
 
@@ -122,13 +196,13 @@ function FamilyControl({
 }: {
   family: Family;
   isMine: boolean;
-  tracking: 'quantity' | 'task';
+  tracking: 'quantity' | 'task' | 'claim';
   quantity: number;
   done: boolean;
   onAdjust: (delta: number) => Promise<void>;
   onToggle: () => Promise<void>;
 }) {
-  const short = family.display_name.replace(/^The\s+/i, '');
+  const short = stripThe(family.display_name);
 
   if (tracking === 'quantity') {
     const active = quantity > 0;
@@ -186,5 +260,3 @@ function FamilyControl({
     </button>
   );
 }
-
-
