@@ -216,7 +216,7 @@ export default function TopBar({
       {showFilter && (
         <div className="w-full bg-gradient-to-b from-dusk-600 to-ocean-700 border-t-0 shadow-sm">
           <div className="max-w-6xl mx-auto px-4 py-2">
-            <div className="relative">
+            <div className="relative z-20">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <input
                 type="search"
