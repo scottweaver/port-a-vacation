@@ -28,6 +28,10 @@ export default {
           500: '#c2566e', // rose
           600: '#9b4264', // deeper rose
         },
+        // Muted-tone accents for category stripes where the saturated
+        // jewel-tones (emerald/violet) overpowered the rest of the row.
+        sage: { 400: '#9caf88' },     // grey-green, herb-garden
+        lavender: { 400: '#c0a8d8' }, // soft purple, not electric
       },
     },
   },

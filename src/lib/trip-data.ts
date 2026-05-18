@@ -166,16 +166,29 @@ export interface CategoryMeta {
   emoji: string;
   description: string;
   scope: 'shared' | 'per-family';
+  /** Tailwind bg-class for the per-category color stripe at the top of
+   *  the card. Full class names so the Tailwind JIT scanner picks them up. */
+  tint: string;
+  /** Tailwind from-class for the faint diagonal gradient wash on the card
+   *  body. Matches the stripe color at low opacity. */
+  tintFade: string;
+  /** Tailwind colored-shadow class so the stripe casts a soft glow of its
+   *  own color downward into the card body. Combined with `shadow-md` on
+   *  the stripe element. */
+  tintShadow: string;
 }
 
+// Tints are a coordinated Gulf-coastal palette: warm sunset/coral families,
+// with ocean blue for the literal beach card and muted sage/lavender/slate
+// for scope variety. Each color appears once — restraint over disco.
 export const CATEGORIES: CategoryMeta[] = [
-  { key: 'beach',     title: 'Beach Essentials',     emoji: '🏖️', description: 'Shared gear — how many of each across all families?',              scope: 'shared' },
-  { key: 'clothing',  title: 'Clothing',             emoji: '👕', description: 'Each family packs their own. Quantities reflect total items.',     scope: 'per-family' },
-  { key: 'car',       title: 'Car Prep',             emoji: '🚗', description: 'Each family checks off their own car before leaving Austin.',      scope: 'per-family' },
-  { key: 'house',     title: 'House Close-Up',       emoji: '🏠', description: 'Each family closes up their own house — everyone sees progress.',  scope: 'per-family' },
-  { key: 'kitchen',   title: 'Kitchen',              emoji: '🍳', description: 'Cookware, utensils, pantry staples shared at the condo.',          scope: 'shared' },
-  { key: 'games',     title: 'Games & Entertainment',emoji: '🎲', description: 'Board games, cards, devices — anything for downtime.',             scope: 'shared' },
-  { key: 'documents', title: 'Documents & Misc',     emoji: '📋', description: 'IDs, permits, cash, electronics.',                                  scope: 'shared' },
+  { key: 'beach',     title: 'Beach Essentials',     emoji: '🏖️', description: 'Shared gear — how many of each across all families?',              scope: 'shared',     tint: 'bg-gradient-to-r from-ocean-400 to-ocean-400/40',     tintFade: 'from-ocean-400/25',   tintShadow: 'shadow-ocean-400/40' },
+  { key: 'clothing',  title: 'Clothing',             emoji: '👕', description: 'Each family packs their own. Quantities reflect total items.',     scope: 'per-family', tint: 'bg-gradient-to-r from-coral-400 to-coral-400/40',     tintFade: 'from-coral-400/25',   tintShadow: 'shadow-coral-400/40' },
+  { key: 'car',       title: 'Car Prep',             emoji: '🚗', description: 'Each family checks off their own car before leaving Austin.',      scope: 'per-family', tint: 'bg-gradient-to-r from-slate-400 to-slate-400/40',     tintFade: 'from-slate-400/25',   tintShadow: 'shadow-slate-400/40' },
+  { key: 'house',     title: 'House Close-Up',       emoji: '🏠', description: 'Each family closes up their own house — everyone sees progress.',  scope: 'per-family', tint: 'bg-gradient-to-r from-sunset-400 to-sunset-400/40',   tintFade: 'from-sunset-400/25',  tintShadow: 'shadow-sunset-400/40' },
+  { key: 'kitchen',   title: 'Kitchen',              emoji: '🍳', description: 'Cookware, utensils, pantry staples shared at the condo.',          scope: 'shared',     tint: 'bg-gradient-to-r from-sage-400 to-sage-400/40',       tintFade: 'from-sage-400/25',    tintShadow: 'shadow-sage-400/40' },
+  { key: 'games',     title: 'Games & Entertainment',emoji: '🎲', description: 'Board games, cards, devices — anything for downtime.',             scope: 'shared',     tint: 'bg-gradient-to-r from-lavender-400 to-lavender-400/40', tintFade: 'from-lavender-400/25',tintShadow: 'shadow-lavender-400/40' },
+  { key: 'documents', title: 'Documents & Misc',     emoji: '📋', description: 'IDs, permits, cash, electronics.',                                  scope: 'shared',     tint: 'bg-gradient-to-r from-sunset-300 to-sunset-300/40',   tintFade: 'from-sunset-300/25',  tintShadow: 'shadow-sunset-300/40' },
 ];
 
 export const categoryByKey: Record<string, CategoryMeta> = Object.fromEntries(

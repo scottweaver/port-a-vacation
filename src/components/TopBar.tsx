@@ -58,33 +58,8 @@ export default function TopBar({
 
   return (
     <header className="sticky top-0 z-20 shadow-lg">
-      <div className="relative overflow-hidden bg-gradient-to-br from-dusk-800 via-sunset-500 to-sunset-300 text-white">
-       {/* Stylized palm tree silhouette in the upper-right corner.
-           Leaning trunk + crown of fronds + coconut cluster. Decorative —
-           hidden from screen readers, never blocks clicks. */}
-       <svg
-         viewBox="0 0 200 100"
-         className="absolute top-0 right-1 sm:right-2 w-32 sm:w-40 h-auto text-dusk-900/40 pointer-events-none"
-         aria-hidden="true"
-       >
-         <g fill="currentColor">
-           {/* Trunk: gentle leftward lean, tapered toward the crown */}
-           <path d="M 130,100 C 124,85 120,65 116,50 L 122,50 C 126,65 130,85 136,100 Z"/>
-           {/* Coconut cluster tucked under the crown */}
-           <circle cx="115" cy="56" r="2.5"/>
-           <circle cx="121" cy="58" r="2"/>
-           {/* Crown: 6 fronds spreading from the trunk top */}
-           <g transform="translate(119 50)">
-             <g transform="rotate(200)"><path d="M 0,0 C 0,-5 30,-3 60,0 C 30,3 0,5 0,0 Z"/></g>
-             <g transform="rotate(230)"><path d="M 0,0 C 0,-5 28,-3 55,0 C 28,3 0,5 0,0 Z"/></g>
-             <g transform="rotate(260)"><path d="M 0,0 C 0,-4 20,-3 40,0 C 20,3 0,4 0,0 Z"/></g>
-             <g transform="rotate(290)"><path d="M 0,0 C 0,-4 22,-3 45,0 C 22,3 0,4 0,0 Z"/></g>
-             <g transform="rotate(320)"><path d="M 0,0 C 0,-5 28,-3 55,0 C 28,3 0,5 0,0 Z"/></g>
-             <g transform="rotate(350)"><path d="M 0,0 C 0,-5 30,-3 60,0 C 30,3 0,5 0,0 Z"/></g>
-           </g>
-         </g>
-       </svg>
-       <div className="relative max-w-6xl mx-auto px-4 py-3">
+      <div className="relative bg-gradient-to-br from-dusk-800 via-sunset-500 to-sunset-300 text-white">
+       <div className="relative z-20 max-w-6xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="font-display text-3xl md:text-4xl leading-none truncate drop-shadow-sm">
@@ -237,19 +212,9 @@ export default function TopBar({
           </div>
         </div>
        </div>
-       {showFilter && (
-         <svg
-           viewBox="0 0 1440 40"
-           preserveAspectRatio="none"
-           className="absolute bottom-0 left-0 w-full h-4 sm:h-5 text-white pointer-events-none"
-           aria-hidden="true"
-         >
-           <path fill="currentColor" d="M0,20 C240,0 480,40 720,20 C960,0 1200,40 1440,20 L1440,40 L0,40 Z" />
-         </svg>
-       )}
       </div>
       {showFilter && (
-        <div className="w-full bg-white border-t-0 shadow-sm">
+        <div className="w-full bg-gradient-to-b from-dusk-600 to-ocean-700 border-t-0 shadow-sm">
           <div className="max-w-6xl mx-auto px-4 py-2">
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -260,7 +225,7 @@ export default function TopBar({
                 onKeyDown={(e) => { if (e.key === 'Escape') onFilterChange(''); }}
                 placeholder="Filter items…"
                 aria-label="Filter checklist items"
-                className="w-full pl-9 pr-20 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-ocean-400 focus:ring-1 focus:ring-ocean-200 focus:bg-white transition"
+                className="w-full pl-9 pr-20 py-1.5 text-sm bg-sand-100 border border-sand-200 rounded-lg text-slate-800 placeholder:text-slate-500 focus:outline-none focus:border-ocean-400 focus:ring-1 focus:ring-ocean-200 focus:bg-sand-50 transition"
               />
               {filter.length > 0 && (
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
@@ -307,6 +272,18 @@ export default function TopBar({
           )}
         </div>
       )}
+      {/* Tropical sunset vector art (two palms + sun + water reflection).
+          Anchored to the bottom of the full sticky header so the island
+          rests against the bottom edge regardless of which sub-bars (filter,
+          update banner) are showing. z-10 sits above the gradient bg but
+          below the title content (which is z-20). pointer-events-none so it
+          never blocks the search input or other interactive elements. */}
+      <img
+        src="/palm-sunset.svg"
+        alt=""
+        aria-hidden="true"
+        className="absolute bottom-0 right-0 w-32 sm:w-36 h-32 sm:h-36 opacity-90 pointer-events-none select-none object-contain object-right-bottom z-10"
+      />
     </header>
   );
 }

@@ -83,6 +83,9 @@ export default function ChecklistSection({
       storageKey={`cat:${category.key}`}
       userId={currentUserId}
       forceOpen={filterActive}
+      tint={category.tint}
+      tintFade={category.tintFade}
+      tintShadow={category.tintShadow}
       header={
         <>
           <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2 flex-wrap">

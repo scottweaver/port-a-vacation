@@ -12,9 +12,20 @@ interface Props {
   id?: string;
   header: ReactNode;
   children: ReactNode;
+  /** Optional Tailwind bg-class for a thin colored stripe at the top of
+   *  the card (e.g. `bg-ocean-400`). Clipped to the rounded corners. */
+  tint?: string;
+  /** Optional Tailwind from-class for a faint diagonal gradient wash on
+   *  the card body (e.g. `from-ocean-400/15`). Echoes the stripe color
+   *  down into the card. */
+  tintFade?: string;
+  /** Optional Tailwind colored-shadow class for the stripe (e.g.
+   *  `shadow-ocean-400/40`). Combined with `shadow-md` so the stripe casts
+   *  a soft colored glow downward into the card body. */
+  tintShadow?: string;
 }
 
-const DEFAULT_CLASSNAME = 'bg-sand-50 rounded-2xl shadow p-5 scroll-mt-20';
+const DEFAULT_CLASSNAME = 'relative overflow-hidden bg-sand-50 rounded-2xl shadow p-5 scroll-mt-20';
 
 export default function CollapsibleCard({
   storageKey,
@@ -25,6 +36,9 @@ export default function CollapsibleCard({
   id,
   header,
   children,
+  tint,
+  tintFade,
+  tintShadow,
 }: Props) {
   const [collapsed, setCollapsed] = useCollapsedState(storageKey, userId, defaultCollapsed);
   const open = forceOpen || !collapsed;
@@ -43,6 +57,28 @@ export default function CollapsibleCard({
 
   return (
     <section id={id} className={className ?? DEFAULT_CLASSNAME}>
+      {tintFade && (
+        <div
+          className={cx(
+            'absolute inset-0 bg-gradient-to-br to-transparent pointer-events-none transition-opacity duration-300',
+            tintFade,
+            open ? 'opacity-100' : 'opacity-50',
+          )}
+          aria-hidden
+        />
+      )}
+      {tint && (
+        <div
+          className={cx(
+            'absolute top-0 left-0 right-0 h-1.5 pointer-events-none',
+            tint,
+            tintShadow && 'shadow-md',
+            tintShadow,
+          )}
+          aria-hidden
+        />
+      )}
+      <div className="relative">
       <button
         type="button"
         onClick={() => setCollapsed(!collapsed)}
@@ -61,6 +97,7 @@ export default function CollapsibleCard({
         />
       </button>
       {open && <div className="mt-4">{children}</div>}
+      </div>
     </section>
   );
 }
