@@ -14,7 +14,7 @@ interface Props {
   children: ReactNode;
 }
 
-const DEFAULT_CLASSNAME = 'bg-white rounded-2xl shadow p-5 scroll-mt-20';
+const DEFAULT_CLASSNAME = 'bg-sand-50 rounded-2xl shadow p-5 scroll-mt-20';
 
 export default function CollapsibleCard({
   storageKey,

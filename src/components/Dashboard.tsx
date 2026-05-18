@@ -274,7 +274,7 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
             })}
 
             {filterActive && totalMatches === 0 && (
-              <div className="bg-white rounded-2xl shadow p-8 text-center">
+              <div className="bg-sand-50 rounded-2xl shadow p-8 text-center">
                 <p className="text-slate-600 font-medium">No items match "{filter.trim()}"</p>
                 <p className="text-slate-400 text-sm mt-1">
                   Try a different word, or clear the filter to see everything.

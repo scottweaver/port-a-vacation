@@ -14,7 +14,7 @@ interface Props {
 export default function AdminPanel({ pending, onApprove, onDeny, error }: Props) {
   return (
     <div className="space-y-6">
-      <section className="bg-white rounded-2xl shadow p-5">
+      <section className="bg-sand-50 rounded-2xl shadow p-5">
         <div className="flex items-center gap-2 mb-1">
           <Shield size={20} className="text-ocean-600" />
           <h2 className="text-lg font-semibold text-slate-800">Admin</h2>
@@ -24,7 +24,7 @@ export default function AdminPanel({ pending, onApprove, onDeny, error }: Props)
         </p>
       </section>
 
-      <section className="bg-white rounded-2xl shadow p-5">
+      <section className="bg-sand-50 rounded-2xl shadow p-5">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-slate-800">Pending requests</h3>
           <span className="text-xs text-slate-500">
