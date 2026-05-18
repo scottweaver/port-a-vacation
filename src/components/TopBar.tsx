@@ -62,6 +62,24 @@ export default function TopBar({
          element, so the island never bleeds into the update banner below. */}
      <div className="relative">
       <div className="relative bg-gradient-to-br from-dusk-800 via-sunset-500 to-sunset-300 text-white">
+       {/* Small flock of seagulls in the distance — three stroked ╲╱ arcs at
+           varied sizes/heights for depth. Universal "birds in flight" shape;
+           low opacity so they read as scattered silhouettes against the sky.
+           z-10 so they sit behind the title text (z-20). */}
+       <svg
+         viewBox="0 0 120 30"
+         className="absolute top-2 left-2 sm:left-4 w-20 sm:w-24 h-auto opacity-40 text-dusk-900 pointer-events-none select-none z-10"
+         aria-hidden="true"
+       >
+         <g fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+           {/* Largest gull, mid-height */}
+           <path d="M 50,14 Q 55,7 60,11 Q 65,7 70,14" />
+           {/* Smaller gull, upper-left */}
+           <path d="M 10,18 Q 14,13 18,16 Q 22,13 26,18" />
+           {/* Smallest gull, far right */}
+           <path d="M 95,20 Q 98,17 101,18 Q 104,17 107,20" />
+         </g>
+       </svg>
        <div className="relative z-20 max-w-6xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
