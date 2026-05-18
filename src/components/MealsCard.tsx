@@ -1,13 +1,15 @@
-import { useMemo, useState } from 'react';
-import { ChefHat, Plus, Pencil, UserPlus, UserMinus } from 'lucide-react';
-import type { Meal, MealType, Profile } from '@/types/db';
+import { useMemo, useRef, useState } from 'react';
+import { ChefHat, Plus, Pencil, UserPlus, UserMinus, ChevronDown, ChevronRight } from 'lucide-react';
+import type { Meal, MealIngredient, MealType, Profile } from '@/types/db';
 import { cx, firstName } from '@/lib/format';
+import { useCollapsedState } from '@/lib/useCollapsed';
 import CollapsibleCard from './CollapsibleCard';
 import MealFormModal from './MealFormModal';
 
 interface Props {
   meals: Meal[];
   sousChefs: Map<string, Set<string>>;
+  ingredients: Map<string, MealIngredient[]>;
   profiles: Map<string, Profile>;
   currentUserId: string;
   isAdmin: boolean;
@@ -28,6 +30,8 @@ interface Props {
   onDelete: (id: string) => Promise<void>;
   onJoinSous: (mealId: string) => void;
   onLeaveSous: (mealId: string, userId?: string) => void;
+  onAddIngredient: (mealId: string, input: { name: string; quantity: string | null; notes?: string | null }) => void;
+  onDeleteIngredient: (mealId: string, ingredientId: string) => void;
 }
 
 const MEAL_TYPE_META: Record<MealType, { label: string; emoji: string }> = {
@@ -52,8 +56,9 @@ function formatDay(dateStr: string): string {
 }
 
 export default function MealsCard({
-  meals, sousChefs, profiles, currentUserId, isAdmin,
+  meals, sousChefs, ingredients, profiles, currentUserId, isAdmin,
   onCreate, onUpdate, onDelete, onJoinSous, onLeaveSous,
+  onAddIngredient, onDeleteIngredient,
 }: Props) {
   const [modalState, setModalState] = useState<{ mode: 'closed' } | { mode: 'create' } | { mode: 'edit'; meal: Meal }>({ mode: 'closed' });
 
@@ -105,12 +110,15 @@ export default function MealsCard({
                       key={meal.id}
                       meal={meal}
                       sousChefSet={sousChefs.get(meal.id) ?? new Set()}
+                      ingredients={ingredients.get(meal.id) ?? []}
                       profiles={profiles}
                       currentUserId={currentUserId}
                       isAdmin={isAdmin}
                       onEdit={() => setModalState({ mode: 'edit', meal })}
                       onJoinSous={() => onJoinSous(meal.id)}
                       onLeaveSous={(uid) => onLeaveSous(meal.id, uid)}
+                      onAddIngredient={(input) => onAddIngredient(meal.id, input)}
+                      onDeleteIngredient={(ingredientId) => onDeleteIngredient(meal.id, ingredientId)}
                     />
                   ))}
                 </div>
@@ -155,17 +163,20 @@ export default function MealsCard({
 }
 
 function MealRow({
-  meal, sousChefSet, profiles, currentUserId, isAdmin,
-  onEdit, onJoinSous, onLeaveSous,
+  meal, sousChefSet, ingredients, profiles, currentUserId, isAdmin,
+  onEdit, onJoinSous, onLeaveSous, onAddIngredient, onDeleteIngredient,
 }: {
   meal: Meal;
   sousChefSet: Set<string>;
+  ingredients: MealIngredient[];
   profiles: Map<string, Profile>;
   currentUserId: string;
   isAdmin: boolean;
   onEdit: () => void;
   onJoinSous: () => void;
   onLeaveSous: (userId?: string) => void;
+  onAddIngredient: (input: { name: string; quantity: string | null; notes?: string | null }) => void;
+  onDeleteIngredient: (ingredientId: string) => void;
 }) {
   const headChef = profiles.get(meal.head_chef_id);
   const sousChefs = useMemo(
@@ -176,27 +187,42 @@ function MealRow({
   const isHeadChef = meal.head_chef_id === currentUserId;
   const isSousChef = sousChefSet.has(currentUserId);
   const canEdit = isHeadChef || isAdmin;
+  // Anyone signed up to cook can edit ingredients; matches the RLS.
+  const canEditIngredients = isHeadChef || isSousChef || isAdmin;
+  // Per-meal collapse state, persisted per-user. Default collapsed so the
+  // meal list stays compact; tap the summary line to expand.
+  const [collapsed, setCollapsed] = useCollapsedState(`meal:${meal.id}`, currentUserId, true);
+  // Ingredients sub-section: default expanded (when the meal itself is
+  // expanded) if there are any ingredients to look at.
+  const [showIngredients, setShowIngredients] = useState(ingredients.length > 0);
+
+  const headChefName = headChef ? firstName(headChef.display_name, headChef.email) : 'Unknown';
 
   return (
     <div className="flex flex-col gap-2 p-3 bg-white rounded-lg border border-slate-100">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-start gap-2 min-w-0 flex-1">
-          <span className="text-xl leading-none mt-0.5" aria-label={meta.label}>{meta.emoji}</span>
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold text-slate-800 truncate">{meal.title}</div>
-            <div className="text-xs text-slate-500 mt-0.5">
-              {meta.label}
-              {' · '}
-              <span className="inline-flex items-center gap-1">
-                <ChefHat size={11} className="text-ocean-600" />
-                {headChef ? firstName(headChef.display_name, headChef.email) : 'Unknown'}
-              </span>
-            </div>
-            {meal.notes && (
-              <p className="text-xs text-slate-500 mt-1 whitespace-pre-wrap">{meal.notes}</p>
-            )}
-          </div>
-        </div>
+      <div className="flex items-center gap-2">
+        {/* Summary line — always visible. Tap anywhere to toggle collapse. */}
+        <button
+          type="button"
+          onClick={() => setCollapsed(!collapsed)}
+          aria-expanded={!collapsed}
+          className="flex items-center gap-1.5 min-w-0 flex-1 text-left"
+        >
+          {collapsed
+            ? <ChevronRight size={14} className="text-slate-400 flex-shrink-0" />
+            : <ChevronDown size={14} className="text-slate-400 flex-shrink-0" />}
+          <span className="text-base leading-none flex-shrink-0" aria-label={meta.label}>{meta.emoji}</span>
+          <span className="text-sm text-slate-800 min-w-0 flex-1 truncate">
+            <span className="text-slate-500">{meta.label}</span>
+            <span className="text-slate-400 mx-1.5">·</span>
+            <span className="font-semibold">{meal.title}</span>
+            <span className="text-slate-400 mx-1.5">·</span>
+            <span className="inline-flex items-center gap-1 text-slate-600">
+              <ChefHat size={11} className="text-ocean-600" />
+              {headChefName}
+            </span>
+          </span>
+        </button>
         {canEdit && (
           <button
             type="button"
@@ -210,7 +236,12 @@ function MealRow({
         )}
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
+      {!collapsed && meal.notes && (
+        <p className="text-xs text-slate-500 whitespace-pre-wrap pl-6">{meal.notes}</p>
+      )}
+
+      {!collapsed && (
+      <div className="flex items-center gap-2 flex-wrap pl-6">
         {sousChefs.length > 0 && (
           <div className="flex items-center gap-1">
             <span className="text-xs text-slate-500">helping:</span>
@@ -248,6 +279,141 @@ function MealRow({
           </button>
         )}
       </div>
+      )}
+
+      {/* Ingredients section — only when meal is expanded. Inner toggle still
+          collapses just the ingredients without collapsing the whole meal.
+          Visible to all when expanded; the add form + delete buttons only
+          render for head_chef / sous_chefs / admin (mirrors RLS). */}
+      {!collapsed && (ingredients.length > 0 || canEditIngredients) && (
+        <div className="border-t border-slate-100 pt-2 pl-6">
+          <button
+            type="button"
+            onClick={() => setShowIngredients((v) => !v)}
+            className="flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-800 transition"
+          >
+            {showIngredients
+              ? <ChevronDown size={14} className="text-slate-400" />
+              : <ChevronRight size={14} className="text-slate-400" />}
+            Ingredients
+            <span className="text-slate-400 font-normal">
+              ({ingredients.length})
+            </span>
+          </button>
+          {showIngredients && (
+            <div className="mt-2 space-y-1">
+              {ingredients.length === 0 ? (
+                <p className="text-xs text-slate-400 italic">No ingredients yet.</p>
+              ) : (
+                ingredients.map((ing) => (
+                  <IngredientRow
+                    key={ing.id}
+                    ingredient={ing}
+                    canDelete={canEditIngredients}
+                    onDelete={() => onDeleteIngredient(ing.id)}
+                  />
+                ))
+              )}
+              {canEditIngredients && (
+                <AddIngredientForm onAdd={onAddIngredient} />
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IngredientRow({
+  ingredient, canDelete, onDelete,
+}: {
+  ingredient: MealIngredient;
+  canDelete: boolean;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="flex items-baseline gap-2 text-sm">
+      {ingredient.quantity && (
+        <span className="font-medium text-slate-700 tabular-nums">{ingredient.quantity}</span>
+      )}
+      <span className="text-slate-800 flex-1 min-w-0">
+        {ingredient.name}
+        {ingredient.notes && (
+          <span className="text-slate-400 text-xs ml-1.5">— {ingredient.notes}</span>
+        )}
+      </span>
+      {canDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          className="text-slate-300 hover:text-coral-500 p-0.5 rounded transition flex-shrink-0"
+          aria-label={`Remove ${ingredient.name}`}
+          title="Remove"
+        >
+          <X size={12} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function AddIngredientForm({
+  onAdd,
+}: {
+  onAdd: (input: { name: string; quantity: string | null; notes?: string | null }) => void;
+}) {
+  const [name, setName] = useState('');
+  const [quantity, setQuantity] = useState('');
+  const quantityRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  function submit() {
+    const n = name.trim();
+    if (!n) return;
+    onAdd({ name: n, quantity: quantity.trim() || null });
+    setName('');
+    setQuantity('');
+    // After adding, return focus to the quantity field so the next
+    // ingredient can be entered with the natural flow: qty → Enter →
+    // name → Enter → submitted, focus back to qty for the next one.
+    quantityRef.current?.focus();
+  }
+
+  return (
+    <div className="flex gap-1.5 mt-2 pt-2 border-t border-slate-100">
+      <input
+        ref={quantityRef}
+        type="text"
+        value={quantity}
+        onChange={(e) => setQuantity(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); nameRef.current?.focus(); } }}
+        placeholder="2 lbs"
+        className="w-20 px-2 py-1 border border-slate-200 rounded text-xs focus:outline-none focus:border-ocean-400 focus:ring-1 focus:ring-ocean-200 tabular-nums"
+      />
+      <input
+        ref={nameRef}
+        type="text"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } }}
+        placeholder="Ingredient"
+        className="flex-1 px-2 py-1 border border-slate-200 rounded text-xs focus:outline-none focus:border-ocean-400 focus:ring-1 focus:ring-ocean-200"
+      />
+      <button
+        type="button"
+        onClick={submit}
+        disabled={!name.trim()}
+        className={cx(
+          'px-2 py-1 rounded text-xs font-medium flex items-center gap-0.5 transition flex-shrink-0',
+          !name.trim()
+            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+            : 'bg-ocean-600 text-white hover:bg-ocean-700',
+        )}
+      >
+        <Plus size={12} />
+        Add
+      </button>
     </div>
   );
 }

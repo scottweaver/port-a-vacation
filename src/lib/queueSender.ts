@@ -138,6 +138,17 @@ async function execute(
       .eq('user_id', op.key.user_id);
     return error;
   }
+  if (op.table === 'meal_ingredients' && op.op === 'insert') {
+    const { error } = await client.from('meal_ingredients').insert(op.payload);
+    return error;
+  }
+  if (op.table === 'meal_ingredients' && op.op === 'delete') {
+    const { error } = await client
+      .from('meal_ingredients')
+      .delete()
+      .eq('id', op.key.id);
+    return error;
+  }
   // Should be unreachable given the exhaustive QueueOp union.
   return { code: 'UNKNOWN_OP', message: 'unknown op' };
 }

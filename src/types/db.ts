@@ -98,4 +98,15 @@ export interface MealSousChef {
   joined_at: string;
 }
 
+export interface MealIngredient {
+  id: string;
+  meal_id: string;
+  name: string;
+  quantity: string | null;
+  notes: string | null;
+  sort_order: number;
+  created_by: string | null;
+  created_at: string;
+}
+
 
