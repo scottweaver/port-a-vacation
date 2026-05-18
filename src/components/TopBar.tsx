@@ -80,7 +80,7 @@ export default function TopBar({
            <path d="M 95,20 Q 98,17 101,18 Q 104,17 107,20" />
          </g>
        </svg>
-       <div className="relative z-20 max-w-6xl mx-auto px-4 py-3">
+       <div className="relative z-30 max-w-6xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="font-display text-3xl md:text-4xl leading-none truncate drop-shadow-sm">
