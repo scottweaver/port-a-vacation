@@ -105,37 +105,45 @@ export default function ConversationModal({
           </button>
         </header>
 
-        <div
-          ref={scrollRef}
-          className="flex-1 overflow-y-auto relative"
-          style={{
-            backgroundImage: 'url(/beach-bg.webp)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundAttachment: 'local',
-          }}
-        >
+        <div className="flex-1 relative overflow-hidden">
+          {/* Fixed background layer — palm-sunset photo anchored to the
+              container, so it doesn't scroll with the messages above it.
+              `background-position: left center` keeps the palm tree as the
+              focal point regardless of modal aspect ratio. */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: 'url(/beach-bg.webp)',
+              backgroundSize: 'cover',
+              backgroundPosition: 'left center',
+            }}
+            aria-hidden
+          />
           {/* Semi-opaque overlay fades the photo so bubbles stay legible. */}
           <div className="absolute inset-0 bg-white/75 pointer-events-none" aria-hidden />
-          <div className="relative px-3 py-3 space-y-3 min-h-full">
-            {!isLoaded ? (
-              <div className="text-center text-sm text-slate-500 py-8">Loading…</div>
-            ) : messages.length === 0 ? (
-              <div className="text-center text-sm text-slate-500 py-8">
-                Be the first to say something.
-              </div>
-            ) : (
-              messages.map((m) => (
-                <MessageRow
-                  key={m.id}
-                  message={m}
-                  profile={profiles.get(m.author_id)}
-                  isMine={m.author_id === currentUserId}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                />
-              ))
-            )}
+          {/* Scrolling messages layer sits on top, transparent so the
+              background shows through the overlay. */}
+          <div ref={scrollRef} className="absolute inset-0 overflow-y-auto">
+            <div className="relative px-3 py-3 space-y-3 min-h-full">
+              {!isLoaded ? (
+                <div className="text-center text-sm text-slate-500 py-8">Loading…</div>
+              ) : messages.length === 0 ? (
+                <div className="text-center text-sm text-slate-500 py-8">
+                  Be the first to say something.
+                </div>
+              ) : (
+                messages.map((m) => (
+                  <MessageRow
+                    key={m.id}
+                    message={m}
+                    profile={profiles.get(m.author_id)}
+                    isMine={m.author_id === currentUserId}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                  />
+                ))
+              )}
+            </div>
           </div>
         </div>
 
