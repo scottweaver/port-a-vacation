@@ -58,6 +58,9 @@ export default function TopBar({
 
   return (
     <header className="sticky top-0 z-20 shadow-lg">
+     {/* Sky + ocean wrapper: the palm image anchors to the BOTTOM of this
+         element, so the island never bleeds into the update banner below. */}
+     <div className="relative">
       <div className="relative bg-gradient-to-br from-dusk-800 via-sunset-500 to-sunset-300 text-white">
        <div className="relative z-20 max-w-6xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-3">
@@ -248,6 +251,19 @@ export default function TopBar({
           </div>
         </div>
       )}
+      {/* Tropical sunset vector art (two palms + sun + water reflection).
+          Anchored to the bottom of the sky+ocean wrapper above so the island
+          rests against the bottom of the filter bar (or the gradient bar
+          when no filter is showing) — NEVER pulled down into the update
+          banner. z-10 sits above the gradient bg but below the title content
+          (z-20). pointer-events-none so it never blocks the search input. */}
+      <img
+        src="/palm-sunset.svg"
+        alt=""
+        aria-hidden="true"
+        className="absolute bottom-0 right-0 w-32 sm:w-36 h-32 sm:h-36 opacity-90 pointer-events-none select-none object-contain object-right-bottom z-10"
+      />
+     </div>
       {updateAvailable && (
         <div className="w-full bg-coral-600 text-white border-t-2 border-coral-700 flex items-stretch">
           <button
@@ -272,18 +288,6 @@ export default function TopBar({
           )}
         </div>
       )}
-      {/* Tropical sunset vector art (two palms + sun + water reflection).
-          Anchored to the bottom of the full sticky header so the island
-          rests against the bottom edge regardless of which sub-bars (filter,
-          update banner) are showing. z-10 sits above the gradient bg but
-          below the title content (which is z-20). pointer-events-none so it
-          never blocks the search input or other interactive elements. */}
-      <img
-        src="/palm-sunset.svg"
-        alt=""
-        aria-hidden="true"
-        className="absolute bottom-0 right-0 w-32 sm:w-36 h-32 sm:h-36 opacity-90 pointer-events-none select-none object-contain object-right-bottom z-10"
-      />
     </header>
   );
 }
