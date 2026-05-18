@@ -7,6 +7,7 @@ import { useProfiles } from '@/hooks/useProfiles';
 import { useAdmin } from '@/hooks/useAdmin';
 import { usePacking } from '@/hooks/usePacking';
 import { useHiddenItems } from '@/hooks/useHiddenItems';
+import { useMeals } from '@/hooks/useMeals';
 import { useConversations } from '@/hooks/useConversations';
 import { useVersionCheck } from '@/hooks/useVersionCheck';
 import { requestNotificationPermission, showMessageNotification } from '@/lib/notifications';
@@ -19,6 +20,7 @@ import TideCard from './TideCard';
 import DriveCard from './DriveCard';
 import BookedActivityCard from './BookedActivityCard';
 import ChecklistSection from './ChecklistSection';
+import MealsCard from './MealsCard';
 import PlacesSection from './PlacesSection';
 import InfoPanel from './InfoPanel';
 import AdminPanel from './AdminPanel';
@@ -49,6 +51,7 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
   const admin = useAdmin(profile.is_admin, session.user.id);
   const packing = usePacking(session.user.id, profile.family_id);
   const hiddenItems = useHiddenItems(session.user.id, profile.family_id);
+  const meals = useMeals(session.user.id);
   const versionCheck = useVersionCheck();
 
   // Surface incoming messages from others as browser notifications when the
@@ -235,6 +238,19 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
                     userId={session.user.id}
                   />
                 ))}
+
+                <MealsCard
+                  meals={meals.meals}
+                  sousChefs={meals.sousChefs}
+                  profiles={profiles}
+                  currentUserId={session.user.id}
+                  isAdmin={profile.is_admin}
+                  onCreate={meals.createMeal}
+                  onUpdate={meals.updateMeal}
+                  onDelete={meals.deleteMeal}
+                  onJoinSous={meals.joinAsSousChef}
+                  onLeaveSous={meals.leaveSousChef}
+                />
               </>
             )}
 

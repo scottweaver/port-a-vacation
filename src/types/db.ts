@@ -78,4 +78,24 @@ export interface ThreadRead {
   last_read_at: string;
 }
 
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'other';
+
+export interface Meal {
+  id: string;
+  meal_date: string;        // 'YYYY-MM-DD' (Postgres DATE)
+  meal_type: MealType;
+  title: string;
+  notes: string | null;
+  head_chef_id: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MealSousChef {
+  meal_id: string;
+  user_id: string;
+  joined_at: string;
+}
+
 

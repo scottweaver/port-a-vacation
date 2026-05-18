@@ -111,6 +111,33 @@ async function execute(
       .eq('id', op.key.id);
     return error;
   }
+  if (op.table === 'meals' && op.op === 'insert') {
+    const { error } = await client.from('meals').insert(op.payload);
+    return error;
+  }
+  if (op.table === 'meals' && op.op === 'update') {
+    const { error } = await client
+      .from('meals')
+      .update(op.payload)
+      .eq('id', op.key.id);
+    return error;
+  }
+  if (op.table === 'meals' && op.op === 'delete') {
+    const { error } = await client.from('meals').delete().eq('id', op.key.id);
+    return error;
+  }
+  if (op.table === 'meal_sous_chefs' && op.op === 'insert') {
+    const { error } = await client.from('meal_sous_chefs').insert(op.payload);
+    return error;
+  }
+  if (op.table === 'meal_sous_chefs' && op.op === 'delete') {
+    const { error } = await client
+      .from('meal_sous_chefs')
+      .delete()
+      .eq('meal_id', op.key.meal_id)
+      .eq('user_id', op.key.user_id);
+    return error;
+  }
   // Should be unreachable given the exhaustive QueueOp union.
   return { code: 'UNKNOWN_OP', message: 'unknown op' };
 }
