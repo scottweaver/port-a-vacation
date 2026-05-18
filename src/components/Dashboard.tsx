@@ -242,6 +242,7 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
                 <MealsCard
                   meals={meals.meals}
                   sousChefs={meals.sousChefs}
+                  ingredients={meals.ingredients}
                   profiles={profiles}
                   currentUserId={session.user.id}
                   isAdmin={profile.is_admin}
@@ -250,6 +251,8 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
                   onDelete={meals.deleteMeal}
                   onJoinSous={meals.joinAsSousChef}
                   onLeaveSous={meals.leaveSousChef}
+                  onAddIngredient={meals.addIngredient}
+                  onDeleteIngredient={meals.deleteIngredient}
                 />
               </>
             )}
