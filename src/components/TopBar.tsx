@@ -97,32 +97,40 @@ export default function TopBar({
           </div>
 
           <div className="flex items-center gap-2">
-            {online ? (
-              <span
-                className="bg-emerald-500/90 text-white rounded-md px-2 py-1 text-xs flex items-center gap-1 font-medium"
-                title="Connected — changes sync immediately"
-              >
-                <Wifi size={12} />
-                <span className="hidden sm:inline">Online</span>
-              </span>
-            ) : (
-              <span
-                className="bg-slate-700/60 text-white/90 rounded-md px-2 py-1 text-xs flex items-center gap-1 font-medium"
-                title="No network — changes will sync when you reconnect"
-              >
-                <WifiOff size={12} />
-                <span className="hidden sm:inline">Offline</span>
-              </span>
-            )}
-            {pendingWrites > 0 && (
-              <span
-                className="bg-amber-400/90 text-amber-900 rounded-md px-2 py-1 text-xs flex items-center gap-1 font-medium tabular-nums"
-                title={`${pendingWrites} pending write${pendingWrites === 1 ? '' : 's'} waiting to sync`}
-              >
-                <RefreshCw size={12} className={online ? 'animate-spin' : ''} />
-                <span>{pendingWrites}</span>
-              </span>
-            )}
+            {/* Online/Offline pill with the pending-writes badge floated to its
+                LEFT via absolute positioning. Keeping the badge out of the flex
+                flow means it can appear and disappear without nudging the
+                connectivity pill (or anything else in the cluster) sideways —
+                the flash on every +/- press used to ripple through every right-
+                side button. */}
+            <div className="relative">
+              {pendingWrites > 0 && (
+                <span
+                  className="absolute right-full top-1/2 -translate-y-1/2 mr-1.5 bg-amber-400/90 text-amber-900 rounded-md px-2 py-1 text-xs flex items-center gap-1 font-medium tabular-nums"
+                  title={`${pendingWrites} pending write${pendingWrites === 1 ? '' : 's'} waiting to sync`}
+                >
+                  <RefreshCw size={12} className={online ? 'animate-spin' : ''} />
+                  <span>{pendingWrites}</span>
+                </span>
+              )}
+              {online ? (
+                <span
+                  className="bg-emerald-500/90 text-white rounded-md px-2 py-1 text-xs flex items-center gap-1 font-medium"
+                  title="Connected — changes sync immediately"
+                >
+                  <Wifi size={12} />
+                  <span className="hidden sm:inline">Online</span>
+                </span>
+              ) : (
+                <span
+                  className="bg-slate-700/60 text-white/90 rounded-md px-2 py-1 text-xs flex items-center gap-1 font-medium"
+                  title="No network — changes will sync when you reconnect"
+                >
+                  <WifiOff size={12} />
+                  <span className="hidden sm:inline">Offline</span>
+                </span>
+              )}
+            </div>
             {unreadMessages > 0 && (
               <button
                 type="button"
