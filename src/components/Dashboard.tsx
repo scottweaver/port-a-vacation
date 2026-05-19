@@ -19,6 +19,7 @@ import WeatherCard from './WeatherCard';
 import TideCard from './TideCard';
 import DriveCard from './DriveCard';
 import BookedActivityCard from './BookedActivityCard';
+import CondoPortalCard from './CondoPortalCard';
 import ChecklistSection from './ChecklistSection';
 import MealsCard from './MealsCard';
 import PlacesSection from './PlacesSection';
@@ -238,6 +239,8 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
                     userId={session.user.id}
                   />
                 ))}
+
+                <CondoPortalCard userId={session.user.id} />
 
                 <MealsCard
                   meals={meals.meals}
