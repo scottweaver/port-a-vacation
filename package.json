@@ -1,7 +1,7 @@
 {
   "name": "port-a-2026",
   "private": true,
-  "version": "3.5.3",
+  "version": "3.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,11 +13,13 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
+    "canvas-confetti": "^1.9.4",
     "lucide-react": "^0.453.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^25.8.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
