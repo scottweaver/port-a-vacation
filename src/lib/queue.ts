@@ -8,7 +8,7 @@
 // touching the supabase client.
 
 import type { Cache } from './cache';
-import type { ChecklistItem, Contribution, HiddenItem, Meal, MealIngredient, MealSousChef, Message, PackingStatus, ThreadRead } from '@/types/db';
+import type { ChecklistItem, CondoInfoPatch, Contribution, HiddenItem, Meal, MealIngredient, MealSousChef, Message, PackingStatus, ThreadRead } from '@/types/db';
 
 export type QueueOp =
   | { table: 'contributions'; op: 'upsert'; payload: Contribution }
@@ -30,7 +30,8 @@ export type QueueOp =
   | { table: 'meal_sous_chefs'; op: 'insert'; payload: MealSousChef }
   | { table: 'meal_sous_chefs'; op: 'delete'; key: { meal_id: string; user_id: string } }
   | { table: 'meal_ingredients'; op: 'insert'; payload: MealIngredient }
-  | { table: 'meal_ingredients'; op: 'delete'; key: { id: string } };
+  | { table: 'meal_ingredients'; op: 'delete'; key: { id: string } }
+  | { table: 'condo_info'; op: 'update'; payload: CondoInfoPatch };
 
 export interface QueueEntry {
   id: string;

@@ -149,6 +149,13 @@ async function execute(
       .eq('id', op.key.id);
     return error;
   }
+  if (op.table === 'condo_info' && op.op === 'update') {
+    const { error } = await client
+      .from('condo_info')
+      .update(op.payload)
+      .eq('id', 1);
+    return error;
+  }
   // Should be unreachable given the exhaustive QueueOp union.
   return { code: 'UNKNOWN_OP', message: 'unknown op' };
 }

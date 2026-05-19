@@ -8,6 +8,7 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { usePacking } from '@/hooks/usePacking';
 import { useHiddenItems } from '@/hooks/useHiddenItems';
 import { useMeals } from '@/hooks/useMeals';
+import { useCondoInfo } from '@/hooks/useCondoInfo';
 import { useConversations } from '@/hooks/useConversations';
 import { useVersionCheck } from '@/hooks/useVersionCheck';
 import { requestNotificationPermission, showMessageNotification } from '@/lib/notifications';
@@ -53,6 +54,7 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
   const packing = usePacking(session.user.id, profile.family_id);
   const hiddenItems = useHiddenItems(session.user.id, profile.family_id);
   const meals = useMeals(session.user.id);
+  const condoInfo = useCondoInfo(session.user.id);
   const versionCheck = useVersionCheck();
 
   // Surface incoming messages from others as browser notifications when the
@@ -240,7 +242,7 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
                   />
                 ))}
 
-                <CondoPortalCard userId={session.user.id} />
+                <CondoPortalCard userId={session.user.id} info={condoInfo.info} />
 
                 <MealsCard
                   meals={meals.meals}
@@ -329,6 +331,8 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
             onDeny={admin.deny}
             onReconsider={admin.reconsider}
             error={admin.error}
+            condoInfo={condoInfo.info}
+            onUpdateCondoInfo={condoInfo.updateInfo}
           />
         )}
       </main>

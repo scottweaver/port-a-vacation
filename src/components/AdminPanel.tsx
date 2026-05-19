@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Shield, CheckCircle2, XCircle, Loader2, Inbox } from 'lucide-react';
-import type { Profile } from '@/types/db';
+import { useEffect, useState } from 'react';
+import { Shield, CheckCircle2, XCircle, Loader2, Inbox, Home, Save } from 'lucide-react';
+import type { CondoInfo, CondoInfoPatch, Profile } from '@/types/db';
 import { firstName, relativeTime } from '@/lib/format';
 
 interface Props {
@@ -9,9 +9,11 @@ interface Props {
   onDeny: (id: string) => Promise<void>;
   onReconsider: (id: string) => Promise<void>;
   error: string | null;
+  condoInfo: CondoInfo | null;
+  onUpdateCondoInfo: (patch: CondoInfoPatch) => void;
 }
 
-export default function AdminPanel({ pending, onApprove, onDeny, error }: Props) {
+export default function AdminPanel({ pending, onApprove, onDeny, error, condoInfo, onUpdateCondoInfo }: Props) {
   return (
     <div className="space-y-6">
       <section className="bg-sand-50 rounded-2xl shadow p-5">
@@ -49,6 +51,8 @@ export default function AdminPanel({ pending, onApprove, onDeny, error }: Props)
           </div>
         )}
       </section>
+
+      <CondoInfoEditor info={condoInfo} onUpdate={onUpdateCondoInfo} />
     </div>
   );
 }
@@ -110,6 +114,202 @@ function PendingRow({
           Approve
         </button>
       </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// CondoInfoEditor — single-form editor for the condo_info row. All approved
+// users CAN see this section (we don't gate the UI by is_admin since the
+// admin tab itself is already gated), but RLS blocks non-admin saves at the
+// server. Save button rejects empty diffs.
+// =============================================================================
+
+type FormState = {
+  door_code: string;
+  pool_code: string;
+  wifi_ssid: string;
+  wifi_password: string;
+  host_name: string;
+  host_phone: string;
+  check_in_time: string;
+  check_out_time: string;
+  bike_rental_name: string;
+  bike_rental_address: string;
+  bike_rental_phone: string;
+  golf_cart_name: string;
+  golf_cart_address: string;
+  golf_cart_phone: string;
+  notes: string;
+};
+
+const EMPTY_FORM: FormState = {
+  door_code: '', pool_code: '',
+  wifi_ssid: '', wifi_password: '',
+  host_name: '', host_phone: '',
+  check_in_time: '', check_out_time: '',
+  bike_rental_name: '', bike_rental_address: '', bike_rental_phone: '',
+  golf_cart_name: '', golf_cart_address: '', golf_cart_phone: '',
+  notes: '',
+};
+
+function infoToForm(info: CondoInfo | null): FormState {
+  if (!info) return EMPTY_FORM;
+  return {
+    door_code: info.door_code ?? '',
+    pool_code: info.pool_code ?? '',
+    wifi_ssid: info.wifi_ssid ?? '',
+    wifi_password: info.wifi_password ?? '',
+    host_name: info.host_name ?? '',
+    host_phone: info.host_phone ?? '',
+    check_in_time: info.check_in_time ?? '',
+    check_out_time: info.check_out_time ?? '',
+    bike_rental_name: info.bike_rental_name ?? '',
+    bike_rental_address: info.bike_rental_address ?? '',
+    bike_rental_phone: info.bike_rental_phone ?? '',
+    golf_cart_name: info.golf_cart_name ?? '',
+    golf_cart_address: info.golf_cart_address ?? '',
+    golf_cart_phone: info.golf_cart_phone ?? '',
+    notes: info.notes ?? '',
+  };
+}
+
+function diff(form: FormState, info: CondoInfo | null): CondoInfoPatch {
+  const patch: CondoInfoPatch = {};
+  const k = Object.keys(form) as (keyof FormState)[];
+  for (const key of k) {
+    const next = form[key].trim() === '' ? null : form[key];
+    const prev = (info?.[key] ?? null) as string | null;
+    if (next !== prev) patch[key] = next;
+  }
+  return patch;
+}
+
+function CondoInfoEditor({ info, onUpdate }: { info: CondoInfo | null; onUpdate: (patch: CondoInfoPatch) => void }) {
+  const [form, setForm] = useState<FormState>(() => infoToForm(info));
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+
+  // Sync form state in from realtime updates only when the user isn't
+  // actively editing (avoids overwriting in-progress typing). We approximate
+  // "not editing" by checking whether the form currently matches what the
+  // server had before this incoming update — i.e. no local diff.
+  useEffect(() => {
+    setForm((current) => {
+      const patch = diff(current, info);
+      if (Object.keys(patch).length === 0) return infoToForm(info);
+      return current;
+    });
+  }, [info]);
+
+  const patch = diff(form, info);
+  const dirty = Object.keys(patch).length > 0;
+
+  function field<K extends keyof FormState>(key: K) {
+    return {
+      value: form[key],
+      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+        setForm((f) => ({ ...f, [key]: e.target.value })),
+    };
+  }
+
+  function handleSave() {
+    if (!dirty) return;
+    onUpdate(patch);
+    setSavedAt(Date.now());
+  }
+
+  return (
+    <section className="bg-sand-50 rounded-2xl shadow p-5 space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Home size={20} className="text-coral-500" />
+          <h3 className="font-semibold text-slate-800">Condo info</h3>
+        </div>
+        <span className="text-xs text-slate-500">
+          {info?.updated_at ? `Last edit ${relativeTime(info.updated_at)}` : 'Not set yet'}
+        </span>
+      </div>
+
+      <p className="text-xs text-slate-500">
+        Visible to every approved family member. Changes appear on everyone's app instantly — no refresh needed.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Field label="Door code" {...field('door_code')} />
+        <Field label="Pool code" {...field('pool_code')} />
+        <Field label="Wifi SSID" {...field('wifi_ssid')} />
+        <Field label="Wifi password" {...field('wifi_password')} />
+        <Field label="Host name" {...field('host_name')} />
+        <Field label="Host phone" {...field('host_phone')} placeholder="361-555-1234" />
+        <Field label="Check-in time" {...field('check_in_time')} placeholder="Mon 4:00 PM" />
+        <Field label="Check-out time" {...field('check_out_time')} placeholder="Fri 10:00 AM" />
+      </div>
+
+      <fieldset className="border border-slate-200 rounded-xl p-3 space-y-2">
+        <legend className="text-xs text-slate-500 px-1">Bike Rental</legend>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Field label="Name" {...field('bike_rental_name')} />
+          <Field label="Address" {...field('bike_rental_address')} />
+          <Field label="Phone" {...field('bike_rental_phone')} />
+        </div>
+      </fieldset>
+
+      <fieldset className="border border-slate-200 rounded-xl p-3 space-y-2">
+        <legend className="text-xs text-slate-500 px-1">Golf Cart Rental</legend>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Field label="Name" {...field('golf_cart_name')} />
+          <Field label="Address" {...field('golf_cart_address')} />
+          <Field label="Phone" {...field('golf_cart_phone')} />
+        </div>
+      </fieldset>
+
+      <div>
+        <label className="block text-xs font-medium text-slate-600 mb-1">Notes</label>
+        <textarea
+          {...field('notes')}
+          rows={3}
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-ocean-400 focus:outline-none focus:ring-1 focus:ring-ocean-400"
+          placeholder="Anything else worth surfacing — gate codes, garbage pickup days, quiet hours..."
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-slate-500">
+          {dirty
+            ? `${Object.keys(patch).length} unsaved change${Object.keys(patch).length === 1 ? '' : 's'}`
+            : savedAt
+              ? 'Saved'
+              : ' '}
+        </span>
+        <button
+          onClick={handleSave}
+          disabled={!dirty}
+          className="px-4 py-2 rounded-lg bg-ocean-600 text-white hover:bg-ocean-700 text-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <Save size={14} />
+          Save
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function Field({ label, value, onChange, placeholder }: {
+  label: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+      <input
+        type="text"
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-ocean-400 focus:outline-none focus:ring-1 focus:ring-ocean-400"
+      />
     </div>
   );
 }

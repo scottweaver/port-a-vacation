@@ -109,4 +109,28 @@ export interface MealIngredient {
   created_at: string;
 }
 
+export interface CondoInfo {
+  id: 1;
+  door_code: string | null;
+  pool_code: string | null;
+  wifi_ssid: string | null;
+  wifi_password: string | null;
+  host_name: string | null;
+  host_phone: string | null;
+  check_in_time: string | null;
+  check_out_time: string | null;
+  bike_rental_name: string | null;
+  bike_rental_address: string | null;
+  bike_rental_phone: string | null;
+  golf_cart_name: string | null;
+  golf_cart_address: string | null;
+  golf_cart_phone: string | null;
+  notes: string | null;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+/** Editable subset of CondoInfo — everything except the audit columns. */
+export type CondoInfoPatch = Partial<Omit<CondoInfo, 'id' | 'updated_at' | 'updated_by'>>;
+
 
