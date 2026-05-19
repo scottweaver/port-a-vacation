@@ -1,4 +1,5 @@
-import { Home, ExternalLink, KeyRound, Waves, Wifi, Phone, Clock, Bike, MapPin } from 'lucide-react';
+import { useState } from 'react';
+import { Home, ExternalLink, KeyRound, Waves, Wifi, Phone, Clock, Bike, MapPin, Eye, EyeOff } from 'lucide-react';
 import type { CondoInfo } from '@/types/db';
 import CollapsibleCard from './CollapsibleCard';
 
@@ -27,15 +28,20 @@ export default function CondoPortalCard({ userId, info }: Props) {
       <div className="space-y-4">
         {(info?.door_code || info?.pool_code) && (
           <div className="grid grid-cols-2 gap-3">
-            {info.door_code && <CodeTile icon={KeyRound} label="Door Code" value={info.door_code} accent="coral" />}
-            {info.pool_code && <CodeTile icon={Waves} label="Pool Code" value={info.pool_code} accent="ocean" />}
+            {info.door_code && <CodeTile icon={KeyRound} label="Door Code" value={info.door_code} accent="coral" secret />}
+            {info.pool_code && <CodeTile icon={Waves} label="Pool Code" value={info.pool_code} accent="ocean" secret />}
           </div>
         )}
 
         {(info?.wifi_ssid || info?.wifi_password) && (
           <InfoRow icon={Wifi} label="Wifi">
             {info.wifi_ssid && <div className="text-slate-700"><span className="text-slate-500 text-xs">SSID:</span> {info.wifi_ssid}</div>}
-            {info.wifi_password && <div className="text-slate-700"><span className="text-slate-500 text-xs">Password:</span> <code className="font-mono">{info.wifi_password}</code></div>}
+            {info.wifi_password && (
+              <div className="text-slate-700 flex items-center gap-2">
+                <span className="text-slate-500 text-xs">Password:</span>
+                <Secret value={info.wifi_password} variant="inline" />
+              </div>
+            )}
           </InfoRow>
         )}
 
@@ -107,19 +113,66 @@ export default function CondoPortalCard({ userId, info }: Props) {
 
 type IconType = React.ComponentType<{ size?: number | string; className?: string }>;
 
-function CodeTile({ icon: Icon, label, value, accent }: { icon: IconType; label: string; value: string; accent: 'coral' | 'ocean' }) {
+function CodeTile({ icon: Icon, label, value, accent, secret = false }: {
+  icon: IconType;
+  label: string;
+  value: string;
+  accent: 'coral' | 'ocean';
+  secret?: boolean;
+}) {
+  const [revealed, setRevealed] = useState(false);
   const wrap = accent === 'coral'
     ? 'bg-gradient-to-br from-coral-50 to-sunset-50 border-coral-100'
     : 'bg-gradient-to-br from-ocean-50 to-cyan-50 border-ocean-100';
   const iconCls = accent === 'coral' ? 'text-coral-600' : 'text-ocean-600';
+  const shown = !secret || revealed;
   return (
     <div className={`rounded-xl border p-3 ${wrap}`}>
-      <div className="flex items-center gap-1.5 text-xs text-slate-600">
-        <Icon size={14} className={iconCls} />
-        {label}
+      <div className="flex items-center justify-between gap-2 text-xs text-slate-600">
+        <span className="flex items-center gap-1.5">
+          <Icon size={14} className={iconCls} />
+          {label}
+        </span>
+        {secret && (
+          <button
+            type="button"
+            onClick={() => setRevealed((v) => !v)}
+            className="text-slate-400 hover:text-slate-700 p-0.5 rounded"
+            title={revealed ? 'Hide' : 'Reveal'}
+            aria-label={revealed ? `Hide ${label}` : `Reveal ${label}`}
+          >
+            {revealed ? <EyeOff size={14} /> : <Eye size={14} />}
+          </button>
+        )}
       </div>
-      <div className="mt-1 text-2xl font-bold text-slate-800 tracking-wider font-mono">{value}</div>
+      <div className="mt-1 text-2xl font-bold text-slate-800 tracking-wider font-mono select-all">
+        {shown ? value : '•'.repeat(Math.max(value.length, 4))}
+      </div>
     </div>
+  );
+}
+
+// Inline reveal — used for wifi password inside the Wifi info row.
+function Secret({ value, variant }: { value: string; variant: 'inline' }) {
+  const [revealed, setRevealed] = useState(false);
+  // variant is reserved for future expansion (e.g. block-level secret rows);
+  // currently only 'inline' is implemented.
+  void variant;
+  return (
+    <>
+      <code className="font-mono select-all">
+        {revealed ? value : '•'.repeat(Math.max(value.length, 6))}
+      </code>
+      <button
+        type="button"
+        onClick={() => setRevealed((v) => !v)}
+        className="text-slate-400 hover:text-slate-700 p-0.5 rounded"
+        title={revealed ? 'Hide' : 'Reveal'}
+        aria-label={revealed ? 'Hide password' : 'Reveal password'}
+      >
+        {revealed ? <EyeOff size={14} /> : <Eye size={14} />}
+      </button>
+    </>
   );
 }
 
