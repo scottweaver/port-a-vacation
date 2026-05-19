@@ -1,8 +1,10 @@
 import { Waves } from 'lucide-react';
-import { TIDE_FORECAST } from '@/lib/trip-data';
+import { useTides } from '@/hooks/useTides';
 import CollapsibleCard from './CollapsibleCard';
+import FreshnessBadge from './FreshnessBadge';
 
 export default function TideCard({ userId }: { userId: string }) {
+  const { tides, source, lastUpdated, loading, refresh } = useTides();
   return (
     <CollapsibleCard
       storageKey="tide"
@@ -13,9 +15,13 @@ export default function TideCard({ userId }: { userId: string }) {
             <Waves size={20} className="text-teal-600" />
             Tide Chart
           </h2>
-          <p className="text-xs text-slate-500">
-            Low tide = best shelling & wider beach. Approximate — verify with NOAA before going out.
-          </p>
+          <FreshnessBadge
+            source={source}
+            lastUpdated={lastUpdated}
+            loading={loading}
+            attribution="NOAA CO-OPS · Port Aransas"
+            onRefresh={refresh}
+          />
         </>
       }
     >
@@ -30,7 +36,7 @@ export default function TideCard({ userId }: { userId: string }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {TIDE_FORECAST.map((t) => (
+            {tides.map((t) => (
               <tr key={t.date}>
                 <td className="py-2 font-medium text-slate-700">{t.date}</td>
                 <td className="py-2 text-slate-600">{t.highs.join(', ')}</td>

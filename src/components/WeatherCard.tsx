@@ -1,8 +1,11 @@
 import { Sun } from 'lucide-react';
-import { WEATHER_FORECAST, conditionIcon, conditionLabel } from '@/lib/trip-data';
+import { conditionIcon, conditionLabel } from '@/lib/trip-data';
+import { useWeather } from '@/hooks/useWeather';
 import CollapsibleCard from './CollapsibleCard';
+import FreshnessBadge from './FreshnessBadge';
 
 export default function WeatherCard({ userId }: { userId: string }) {
+  const { forecast, source, lastUpdated, loading, refresh } = useWeather();
   return (
     <CollapsibleCard
       storageKey="weather"
@@ -13,14 +16,18 @@ export default function WeatherCard({ userId }: { userId: string }) {
             <Sun size={20} className="text-amber-500" />
             Weather Forecast
           </h2>
-          <p className="text-xs text-slate-500">
-            5-day outlook for Port Aransas. Refresh closer to trip for live conditions.
-          </p>
+          <FreshnessBadge
+            source={source}
+            lastUpdated={lastUpdated}
+            loading={loading}
+            attribution="Open-Meteo"
+            onRefresh={refresh}
+          />
         </>
       }
     >
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {WEATHER_FORECAST.map((d) => {
+        {forecast.map((d) => {
           const Icon = conditionIcon[d.condition];
           return (
             <div key={d.date} className="bg-gradient-to-br from-ocean-50 to-cyan-50 rounded-xl p-3 border border-ocean-100">
@@ -32,7 +39,7 @@ export default function WeatherCard({ userId }: { userId: string }) {
               </div>
               <div className="text-xs text-slate-600">{conditionLabel[d.condition]}</div>
               <div className="text-xs text-ocean-600 mt-1">💧 {d.rainChance}%</div>
-              <div className="text-xs text-slate-500 italic mt-1">{d.note}</div>
+              {d.note && <div className="text-xs text-slate-500 italic mt-1">{d.note}</div>}
             </div>
           );
         })}
