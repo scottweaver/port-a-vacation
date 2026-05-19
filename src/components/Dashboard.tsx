@@ -21,6 +21,7 @@ import TideCard from './TideCard';
 import DriveCard from './DriveCard';
 import BookedActivityCard from './BookedActivityCard';
 import CondoPortalCard from './CondoPortalCard';
+import OnIslandCard from './OnIslandCard';
 import ChecklistSection from './ChecklistSection';
 import MealsCard from './MealsCard';
 import PlacesSection from './PlacesSection';
@@ -259,6 +260,8 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
                   onAddIngredient={meals.addIngredient}
                   onDeleteIngredient={meals.deleteIngredient}
                 />
+
+                <OnIslandCard userId={session.user.id} />
               </>
             )}
 

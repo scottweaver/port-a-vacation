@@ -103,6 +103,84 @@ export const ACTIVITIES: Place[] = [
   { name: 'Port Aransas Tiki Boat Tours',  type: 'Shelling & sightseeing',rating: 4.9, reviewCount: 19,  phone: '(361) 205-7707', note: 'Captain Moon takes you shelling, dolphin watching, lighthouse views.' },
 ];
 
+// =============================================================================
+// On-island essentials — things you can grab without taking the ferry back to
+// the mainland. Static data; family member requested this in v3.10. Restaurants
+// live in RESTAURANTS above (different vibe — "where should we eat tonight").
+// =============================================================================
+
+export interface OnIslandEssential {
+  emoji: string;
+  category: string;
+  name: string;
+  address: string;
+  phone: string | null;
+  hours?: string;
+  note: string;
+}
+
+export const ON_ISLAND_ESSENTIALS: OnIslandEssential[] = [
+  {
+    emoji: '🛒',
+    category: 'Grocery',
+    name: "Lowe's Market",
+    address: '418 S Alister St',
+    phone: '(361) 749-6233',
+    note: "The only grocery store on the island. Used to be Family Center IGA — same building, new owners as of 2025.",
+  },
+  {
+    emoji: '🔧',
+    category: 'Hardware',
+    name: 'Ace Hardware',
+    address: '1115 SH-361, Ste A',
+    phone: '(361) 749-2004',
+    hours: 'Mon–Sat 8am–6pm · Sun 9am–5pm',
+    note: 'Beach gear, propane, paint, key cutting, glass cutting.',
+  },
+  {
+    emoji: '⛽',
+    category: 'Gas',
+    name: 'Valero',
+    address: '3501 SH-361',
+    phone: null,
+    note: "On-island gas. Also sells the city's $12 beach parking permit.",
+  },
+  {
+    emoji: '🐟',
+    category: 'Bait & Tackle',
+    name: 'Island Tackle',
+    address: '207 W Ave G',
+    phone: '(361) 749-1744',
+    hours: 'Mon 8am–5pm · Tue–Sat 7:30am–6pm',
+    note: 'Bait, tackle, rod + reel rental & repair. Surf, jetty, pier, or boat gear.',
+  },
+  {
+    emoji: '💊',
+    category: 'Pharmacy',
+    name: 'CVS Pharmacy',
+    address: '710 SH-361',
+    phone: '(361) 749-2277',
+    note: 'Prescriptions, immunizations, sundries. Has a drive-thru window.',
+  },
+  {
+    emoji: '🍺',
+    category: 'Liquor',
+    name: "Spanky's Liquor",
+    address: '501 S Alister St',
+    phone: '(361) 749-6994',
+    hours: 'Daily 10am–9pm',
+    note: 'Beer, wine, liquor, cigars. Central location on Alister.',
+  },
+  {
+    emoji: '☕',
+    category: 'Coffee',
+    name: 'Coffee Waves',
+    address: '1007 SH-361',
+    phone: null,
+    note: 'Iconic local — handcrafted espresso, iced coffee, gelato. Indie bookstore inside.',
+  },
+];
+
 export interface BookedActivity {
   emoji: string;
   name: string;
