@@ -1,6 +1,6 @@
 import { ShieldX, LogOut } from 'lucide-react';
 import type { Profile } from '@/types/db';
-import { OWNER_EMAIL } from '@/lib/supabase';
+import { OWNER_EMAIL, OWNER_NAME } from '@/lib/supabase';
 
 interface Props {
   profile: Profile;
@@ -19,8 +19,14 @@ export default function DeniedScreen({ profile, onSignOut }: Props) {
             <div>
               <h1 className="text-xl font-bold text-slate-800">Access not granted</h1>
               <p className="text-sm text-slate-600 mt-1">
-                If this is a mistake, reach out to Scott at{' '}
-                <a href={`mailto:${OWNER_EMAIL}`} className="text-ocean-600 hover:underline">{OWNER_EMAIL}</a>.
+                {OWNER_EMAIL ? (
+                  <>
+                    If this is a mistake, reach out to {OWNER_NAME} at{' '}
+                    <a href={`mailto:${OWNER_EMAIL}`} className="text-ocean-600 hover:underline">{OWNER_EMAIL}</a>.
+                  </>
+                ) : (
+                  <>If this is a mistake, reach out to {OWNER_NAME}.</>
+                )}
               </p>
             </div>
           </div>

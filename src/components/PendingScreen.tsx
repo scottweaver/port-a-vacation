@@ -1,6 +1,6 @@
 import { Clock, LogOut } from 'lucide-react';
 import type { Profile } from '@/types/db';
-import { OWNER_EMAIL } from '@/lib/supabase';
+import { OWNER_EMAIL, OWNER_NAME } from '@/lib/supabase';
 
 interface Props {
   profile: Profile;
@@ -19,7 +19,7 @@ export default function PendingScreen({ profile, onSignOut }: Props) {
             <div>
               <h1 className="text-xl font-bold text-slate-800">Waiting for approval</h1>
               <p className="text-sm text-slate-600 mt-1">
-                Hi {profile.display_name?.split(/\s+/)[0] ?? 'there'} — Scott needs to approve your access before you can see the trip dashboard.
+                Hi {profile.display_name?.split(/\s+/)[0] ?? 'there'} — {OWNER_NAME} needs to approve your access before you can see the trip dashboard.
               </p>
             </div>
           </div>
@@ -30,7 +30,12 @@ export default function PendingScreen({ profile, onSignOut }: Props) {
               <span className="font-medium text-slate-700">{profile.email}</span>
             </div>
             <div className="text-xs text-slate-500">
-              This page will update automatically once Scott approves you — no need to refresh. You can also email <a href={`mailto:${OWNER_EMAIL}`} className="text-ocean-600 hover:underline">{OWNER_EMAIL}</a> to give him a nudge.
+              This page will update automatically once {OWNER_NAME} approves you — no need to refresh.
+              {OWNER_EMAIL && (
+                <>
+                  {' '}You can also email <a href={`mailto:${OWNER_EMAIL}`} className="text-ocean-600 hover:underline">{OWNER_EMAIL}</a> to give them a nudge.
+                </>
+              )}
             </div>
           </div>
 

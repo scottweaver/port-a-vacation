@@ -17,11 +17,11 @@ describe('cx', () => {
 
 describe('firstName', () => {
   it('returns the first word of a display name', () => {
-    expect(firstName('Scott Weaver')).toBe('Scott');
+    expect(firstName('Test User')).toBe('Test');
   });
 
   it('falls back to the email local-part when no display name', () => {
-    expect(firstName(null, 'scott.t.weaver@gmail.com')).toBe('scott.t.weaver');
+    expect(firstName(null, 'test.user@example.com')).toBe('test.user');
   });
 
   it("returns 'Someone' when both are missing", () => {

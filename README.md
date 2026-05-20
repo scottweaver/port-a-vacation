@@ -9,7 +9,7 @@ For deep architectural context, data model rationale, and the full release histo
 - **Vite + React 18 + TypeScript** (strict, `noUncheckedIndexedAccess`)
 - **Tailwind CSS 3** (NOT v4 — v3 is more stable for now)
 - **Supabase**: Postgres + Auth (Google OAuth + dev email/password) + Realtime
-- **Vitest** for unit tests on the pure-logic layer (cache, queue, auth logic, format helpers, link/typing helpers) — 66+ tests, `environment: 'node'` so no DOM dependency
+- **Vitest** for unit tests on the pure-logic layer (cache, queue, auth logic, format helpers, link/typing helpers, weather/tide parsers) — 85+ tests, `environment: 'node'` so no DOM dependency
 - **Caveat** display font (Google Fonts) for the title; system stack for body
 - **Vercel** for deploy, auto on push to `main`
 
@@ -29,11 +29,12 @@ This is the **recommended path** — don't develop against prod, the family is u
 ```bash
 npm install
 supabase start                       # local Postgres + Auth + Realtime in Docker
-supabase db reset --local            # apply migrations 0001–0006, seed 3 families + 74 items
-./scripts/seed-local-users.sh        # create 4 test users with stable UUIDs + Dicebear avatars
+supabase db reset --local && ./scripts/seed-local-users.sh   # apply all migrations + reseed test users in one shot
 supabase status -o env > .env.development.local   # local URL + anon key for Vite
 npm run dev                          # dev server on http://localhost:5173
 ```
+
+**⚠️ Always chain the seed after a reset.** `supabase db reset --local` wipes `auth.users`, so the four test accounts disappear until the seed script reruns. Forget this and you'll hit "invalid credentials" on every dev login.
 
 **⚠️ Always pass `--local` to `supabase db reset`.** Bare `supabase db reset` would target the prod remote; that's banned for this project.
 
@@ -65,14 +66,22 @@ Both are gitignored. `npm run dev` picks up local; `npm run build` produces a pr
 
 If you're using this as a starting template for your own trip, you'll need to do a couple of things in addition to the local-stack steps above.
 
-### Change the hardcoded owner email
+### Set the owner identity
 
-Search for `scott.t.weaver@gmail.com` and replace with yours. It appears in two places:
+The frontend reads two env vars (both shown on the Pending / Denied screens so users know who to nudge):
 
-1. **`supabase/migrations/0001_init.sql`** — the `handle_new_user` trigger auto-admins and auto-Weavers-family this email on first Google sign-in.
-2. **`src/lib/supabase.ts`** — the `OWNER_EMAIL` constant.
+```
+VITE_OWNER_EMAIL=you@example.com       # used in the mailto link
+VITE_OWNER_NAME=YourFirstName          # used in "X needs to approve you" copy
+```
 
-Both must match — the first one bootstraps the DB row, the second one is a client-side check.
+Add them to `.env.local` for local prod-like builds and to your Vercel project env (Production) for the deployed app. If `VITE_OWNER_EMAIL` is omitted the mailto link is suppressed and the screens fall back to generic copy; if `VITE_OWNER_NAME` is omitted the screens derive a name from the email local-part (e.g. `scott.t.weaver@…` → "Scott").
+
+### Change the SQL-trigger owner email
+
+There's still one hardcoded reference that needs editing before you apply migrations: the `handle_new_user` trigger in **`supabase/migrations/0001_init.sql`** (line ~102) auto-admins the email it matches on first Google sign-in. Search-and-replace `scott.t.weaver@gmail.com` with your own email there. *(Planned follow-up: move this into an `app_config` table so it's a one-line SQL UPDATE post-deploy instead of a source edit.)*
+
+The dev tooling also references this email in a few places (`scripts/seed-local-users.sh`, `src/components/SignInScreen.tsx` `DEV_USERS` array). These are dev-only (gated by `import.meta.env.DEV`) and never ship to prod, but you'll want to update them so your local test users can pick "admin" via the quick-pick form.
 
 ### Set up your own Supabase project (~5 min)
 
@@ -81,7 +90,7 @@ Both must match — the first one bootstraps the DB row, the second one is a cli
 3. Link the CLI and push migrations:
    ```bash
    supabase link --project-ref <your-project-ref>
-   supabase db push      # applies migrations 0001–0006 to the linked remote
+   supabase db push      # applies all migrations (0001–0010 as of v3.12.1) to the linked remote
    ```
    Verify in SQL Editor: `select count(*) from public.families;` → 3, `select count(*) from public.checklist_items;` → 74.
 
@@ -118,7 +127,7 @@ Both must match — the first one bootstraps the DB row, the second one is a cli
 
 1. Push the repo to GitHub.
 2. <https://vercel.com> → Add New → Project → import repo. Framework: Vite (auto-detected).
-3. Add env vars: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+3. Add env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_OWNER_EMAIL`, `VITE_OWNER_NAME`.
 4. Deploy. Vercel auto-deploys on every push to `main` from then on.
 
 If you change the deployed URL later (custom domain, project rename), update **three** places: Supabase Site URL, Supabase Redirect URLs, Google Cloud OAuth Authorized JavaScript origins.
@@ -143,17 +152,17 @@ Just enough to navigate the code; full rationale in `CLAUDE.md`.
 
 ### Security
 
-All tables have RLS enabled. `is_approved()` and `is_admin()` are stable security-definer helpers used in policies. The user-facing client uses the anon key and cannot escape RLS. The `updated_by = auth.uid()` check on contribution writes prevents spoofing "updated by Scott" from another user's session.
+All tables have RLS enabled. `is_approved()` and `is_admin()` are stable security-definer helpers used in policies. The user-facing client uses the anon key and cannot escape RLS. The `updated_by = auth.uid()` check on contribution writes prevents spoofing "updated by someone else" from another user's session.
 
 ### Auth gate
 
 Three stages after Google sign-in:
 
-1. `pending` — awaiting Scott's approval
+1. `pending` — awaiting admin approval
 2. `needs-family` — approved but hasn't picked a family yet
 3. `approved` — full access
 
-Scott (hardcoded owner email) is auto-approved + auto-admin + auto-Weavers on first sign-in via the DB trigger.
+The owner (email hardcoded in the `handle_new_user` SQL trigger, see "Forking" above) is auto-approved + auto-admin + auto-assigned to the first-seeded family on first sign-in.
 
 ### Offline tolerance
 
@@ -266,12 +275,16 @@ port-a-2026/
 │   └── index.css
 ├── supabase/
 │   └── migrations/
-│       ├── 0001_init.sql
+│       ├── 0001_init.sql                       # families, profiles, checklist_items, contributions, RLS
 │       ├── 0002_admin_can_delete_defaults.sql
 │       ├── 0003_add_claim_tracking_type.sql
-│       ├── 0004_packing_status.sql
-│       ├── 0005_hidden_items.sql
-│       └── 0006_messages.sql
+│       ├── 0004_packing_status.sql             # family-private pack tracking
+│       ├── 0005_hidden_items.sql               # family-private hide list
+│       ├── 0006_messages.sql                   # per-item chat + thread_reads
+│       ├── 0007_meals.sql                      # meals + sous chefs
+│       ├── 0008_meal_ingredients.sql           # per-meal ingredient list
+│       ├── 0009_condo_info.sql                 # single-row condo info (admin-editable)
+│       └── 0010_shopping_list.sql              # family-private shopping list
 ├── CLAUDE.md                 # Canonical project context + release history
 ├── .env.example
 ├── package.json
