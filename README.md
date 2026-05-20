@@ -288,7 +288,8 @@ port-a-2026/
 │       ├── 0009_condo_info.sql                 # single-row condo info (admin-editable)
 │       └── 0010_shopping_list.sql              # family-private shopping list
 ├── CLAUDE.md                 # Canonical project context + release history
-├── LICENSE                   # AGPL-3.0 (canonical FSF text) with copyright header
+├── LICENSE                   # AGPL-3.0 — pure canonical FSF text (so GitHub auto-detects)
+├── NOTICE                    # Copyright header + dual-license note
 ├── LICENSING.md              # Which license you need + dual-license rationale
 ├── COMMERCIAL-LICENSE.md     # Plain-English commercial option summary
 ├── COMMERCIAL-TERMS.md       # Substantive commercial terms (placeholder; lawyer review pending)

@@ -1,7 +1,7 @@
 {
   "name": "port-a-2026",
   "private": true,
-  "version": "3.15.0",
+  "version": "3.15.1",
   "type": "module",
   "license": "AGPL-3.0-or-later OR SEE LICENSE IN COMMERCIAL-LICENSE.md",
   "author": "Scott T Weaver <scott.t.weaver@gmail.com>",
