@@ -10,6 +10,7 @@ import { useShoppingList } from '@/hooks/useShoppingList';
 import { useHiddenItems } from '@/hooks/useHiddenItems';
 import { useMeals } from '@/hooks/useMeals';
 import { useCondoInfo } from '@/hooks/useCondoInfo';
+import { useTabBadge } from '@/lib/useTabBadge';
 import { useConversations } from '@/hooks/useConversations';
 import { useVersionCheck } from '@/hooks/useVersionCheck';
 import { requestNotificationPermission, showMessageNotification } from '@/lib/notifications';
@@ -110,6 +111,11 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
     for (const n of conversations.unreadByItem.values()) total += n;
     return total;
   }, [conversations.unreadByItem]);
+
+  // Show "(N) Port A 2026 🏖️" in the browser tab strip when there are unread
+  // messages — useful when the tab is backgrounded and the in-app badges
+  // aren't visible.
+  useTabBadge(totalUnread);
 
   const unreadByCategory = useMemo(() => {
     const result = new Map<string, number>();
