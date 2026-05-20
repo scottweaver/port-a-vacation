@@ -21,7 +21,7 @@ interface Props {
   onTabChange: (t: 'trip' | 'admin') => void;
   onPackMode: () => void;
   onShoppingMode: () => void;
-  shoppingCount: number;
+  shoppingPendingCount: number;
   onSignOut: () => Promise<void>;
   filter: string;
   onFilterChange: (s: string) => void;
@@ -32,7 +32,7 @@ interface Props {
 export default function TopBar({
   profile, families, pendingCount, unreadMessages, onJumpToUnread,
   updateAvailable, onReload, appVersion, buildId, latestVersionTag, onShowReleaseNotes,
-  currentTab, onTabChange, onPackMode, onShoppingMode, shoppingCount, onSignOut,
+  currentTab, onTabChange, onPackMode, onShoppingMode, shoppingPendingCount, onSignOut,
   filter, onFilterChange, filterMatchCount, showFilter,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -176,16 +176,16 @@ export default function TopBar({
               onClick={onShoppingMode}
               className="relative bg-white/15 hover:bg-white/25 text-white rounded-md px-2.5 py-1.5 text-sm flex items-center gap-1.5 font-medium transition"
               title={
-                shoppingCount === 0
+                shoppingPendingCount === 0
                   ? "Shopping list — tap the bag icon on a checklist item to add it"
-                  : `Shopping list (${shoppingCount} item${shoppingCount === 1 ? '' : 's'})`
+                  : `${shoppingPendingCount} item${shoppingPendingCount === 1 ? '' : 's'} still to buy`
               }
             >
               <ShoppingBag size={14} />
               <span className="hidden sm:inline">Shop</span>
-              {shoppingCount > 0 && (
+              {shoppingPendingCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-amber-400 text-amber-900 text-[10px] rounded-full min-w-[16px] h-[16px] px-1 flex items-center justify-center font-bold tabular-nums leading-none">
-                  {shoppingCount > 99 ? '99+' : shoppingCount}
+                  {shoppingPendingCount > 99 ? '99+' : shoppingPendingCount}
                 </span>
               )}
             </button>

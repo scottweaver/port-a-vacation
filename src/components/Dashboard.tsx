@@ -242,7 +242,10 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
         onTabChange={setTab}
         onPackMode={() => setMode('pack')}
         onShoppingMode={() => setMode('shopping')}
-        shoppingCount={shopping.entries.size}
+        shoppingPendingCount={
+          // Only items still in "Need to buy" — purchased rows don't deserve a badge.
+          Array.from(shopping.entries.values()).filter((p) => !p).length
+        }
         onSignOut={onSignOut}
         filter={filter}
         onFilterChange={setFilter}
