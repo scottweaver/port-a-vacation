@@ -4,6 +4,8 @@ Real-time collaborative dashboard for our Port Aransas family trip (May 25–29,
 
 For deep architectural context, data model rationale, and the full release history, see **`CLAUDE.md`** — it's the canonical doc for how and why the project is built the way it is.
 
+> **License:** dual-licensed under [AGPL-3.0-or-later](./LICENSE) (free) or a [commercial license](./COMMERCIAL-LICENSE.md) (paid alternative for parties that don't want AGPL obligations). See [`LICENSING.md`](./LICENSING.md) for which one you need.
+
 ## Stack
 
 - **Vite + React 18 + TypeScript** (strict, `noUncheckedIndexedAccess`)
@@ -286,6 +288,12 @@ port-a-2026/
 │       ├── 0009_condo_info.sql                 # single-row condo info (admin-editable)
 │       └── 0010_shopping_list.sql              # family-private shopping list
 ├── CLAUDE.md                 # Canonical project context + release history
+├── LICENSE                   # AGPL-3.0 (canonical FSF text) with copyright header
+├── LICENSING.md              # Which license you need + dual-license rationale
+├── COMMERCIAL-LICENSE.md     # Plain-English commercial option summary
+├── COMMERCIAL-TERMS.md       # Substantive commercial terms (placeholder; lawyer review pending)
+├── CLA.md                    # Individual Contributor License Agreement
+├── CLA-CORPORATE.md          # Corporate Contributor License Agreement
 ├── .env.example
 ├── package.json
 ├── tsconfig*.json
@@ -293,6 +301,26 @@ port-a-2026/
 ├── tailwind.config.js
 └── index.html
 ```
+
+## Licensing & contributing
+
+Port A 2026 is **dual-licensed**. Pick the one that fits your use:
+
+- **[AGPL-3.0-or-later](./LICENSE)** (free) — personal forks, hobby use, internal company tools that comply with AGPL's source-release obligations.
+- **[Commercial license](./COMMERCIAL-LICENSE.md)** (paid, annual) — proprietary products / SaaS deployments that don't want to release modifications under AGPL. Contact <scott.t.weaver@gmail.com>.
+
+Full guide in [`LICENSING.md`](./LICENSING.md).
+
+### Contributing
+
+All contributions to this repo are made under a Contributor License Agreement so the dual-licensing model can work:
+
+- Individuals (personal time, own copyright): [`CLA.md`](./CLA.md)
+- Employees on company time: [`CLA-CORPORATE.md`](./CLA-CORPORATE.md)
+
+By opening a PR you confirm you've read the relevant CLA and agree to its terms. CLA-bot integration (cla-assistant.io) is a planned follow-up.
+
+> **Legal review.** The AGPL-3.0 text is the canonical FSF original. The commercial and CLA documents are modeled on widely-used dual-licensing patterns (Apache, Plausible, Cal.com) but have not been reviewed by counsel — they're a reasonable starting point, not legal advice. For binding commercial agreements or contributor disputes, get a lawyer.
 
 ## Cost
 
