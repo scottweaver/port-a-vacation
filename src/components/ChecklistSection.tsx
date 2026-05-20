@@ -248,16 +248,20 @@ export default function ChecklistSection({
 }
 
 /**
- * "Missing" depends on the item's tracking type:
+ * "Missing" is evaluated from MY family's perspective for the item types
+ * where each family contributes their own share. Claim is the exception —
+ * it's single-provider, so any family's claim covers everyone.
  *
- * - quantity → nobody has committed any quantity yet (sum across families = 0).
- *   We don't have per-item targets, so "0 brought" is the only objective signal.
+ * - quantity → my family hasn't committed any quantity yet. Another family
+ *   bringing towels doesn't change whether MY family needs to bring some.
  * - task → my family hasn't ticked it yet. Tasks are per-family; another
- *   family's tick doesn't help me close out mine. If the user has no family
- *   yet, fall back to "no family has done it" (rare — pending users mostly).
+ *   family's tick doesn't help me close out mine.
  * - claim → nobody has claimed it. Once any family claims, it's covered for
- *   everyone (matches the user-requested rule: claim items provided by one
- *   family don't count as missing for the families NOT bringing them).
+ *   everyone (the user-requested rule: claim items provided by one family
+ *   don't count as missing for the families NOT bringing them).
+ *
+ * Fallback: if the user has no family yet (rare — pending users), we use
+ * the overall-coverage signal instead of the family-scoped one.
  */
 function isMissing(
   item: ChecklistItem,
@@ -266,6 +270,7 @@ function isMissing(
   getContribution: (itemId: string, familyId: string) => Contribution | undefined,
 ): boolean {
   if (item.tracking_type === 'quantity') {
+    if (myFamilyId) return (getContribution(item.id, myFamilyId)?.quantity ?? 0) === 0;
     let total = 0;
     for (const f of families) total += getContribution(item.id, f.id)?.quantity ?? 0;
     return total === 0;
