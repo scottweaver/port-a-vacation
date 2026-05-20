@@ -156,6 +156,28 @@ async function execute(
       .eq('id', 1);
     return error;
   }
+  if (op.table === 'shopping_list' && op.op === 'upsert') {
+    const { error } = await client
+      .from('shopping_list')
+      .upsert(op.payload, { onConflict: 'item_id,family_id', ignoreDuplicates: true });
+    return error;
+  }
+  if (op.table === 'shopping_list' && op.op === 'updatePurchased') {
+    const { error } = await client
+      .from('shopping_list')
+      .update({ purchased: op.payload.purchased })
+      .eq('item_id', op.key.item_id)
+      .eq('family_id', op.key.family_id);
+    return error;
+  }
+  if (op.table === 'shopping_list' && op.op === 'delete') {
+    const { error } = await client
+      .from('shopping_list')
+      .delete()
+      .eq('item_id', op.key.item_id)
+      .eq('family_id', op.key.family_id);
+    return error;
+  }
   // Should be unreachable given the exhaustive QueueOp union.
   return { code: 'UNKNOWN_OP', message: 'unknown op' };
 }

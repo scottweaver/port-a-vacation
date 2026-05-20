@@ -57,6 +57,15 @@ export interface HiddenItem {
   hidden_at: string;
 }
 
+export interface ShoppingListEntry {
+  item_id: string;
+  family_id: string;
+  purchased: boolean;
+  added_by: string | null;
+  added_at: string;
+  updated_at: string;
+}
+
 export interface Message {
   id: string;
   item_id: string;

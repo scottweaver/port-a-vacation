@@ -24,6 +24,8 @@ interface Props {
   onHide: (itemId: string) => void;
   onUnhide: (itemId: string) => void;
   onOpenChat: (itemId: string) => void;
+  onToggleShopping: (itemId: string) => void;
+  shoppingListItems: Map<string, boolean>;
   unreadByItem: Map<string, number>;
   messageCountByItem: Map<string, number>;
   unreadCategory: number;
@@ -37,7 +39,8 @@ export default function ChecklistSection({
   category, items, families, profiles, familyById, hidden, filter,
   getContribution, onAdjustQuantity, onToggleTask, onClaim, onUnclaim,
   onAddItem, onDeleteItem, onHide, onUnhide,
-  onOpenChat, unreadByItem, messageCountByItem, unreadCategory, onJumpInCategory,
+  onOpenChat, onToggleShopping, shoppingListItems,
+  unreadByItem, messageCountByItem, unreadCategory, onJumpInCategory,
   currentUserId, myFamilyId, isAdmin,
 }: Props) {
   const filterActive = filter.trim().length > 0;
@@ -140,6 +143,8 @@ export default function ChecklistSection({
               onDelete={onDeleteItem}
               onHide={onHide}
               onOpenChat={onOpenChat}
+              onToggleShopping={onToggleShopping}
+              isOnShoppingList={shoppingListItems.has(item.id)}
               unreadCount={unreadByItem.get(item.id) ?? 0}
               messageCount={messageCountByItem.get(item.id) ?? 0}
               currentUserId={currentUserId}

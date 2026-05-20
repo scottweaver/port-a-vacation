@@ -6,6 +6,7 @@ import { useChecklist } from '@/hooks/useChecklist';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useAdmin } from '@/hooks/useAdmin';
 import { usePacking } from '@/hooks/usePacking';
+import { useShoppingList } from '@/hooks/useShoppingList';
 import { useHiddenItems } from '@/hooks/useHiddenItems';
 import { useMeals } from '@/hooks/useMeals';
 import { useCondoInfo } from '@/hooks/useCondoInfo';
@@ -29,6 +30,7 @@ import InfoPanel from './InfoPanel';
 import AdminPanel from './AdminPanel';
 import ProgressCard from './ProgressCard';
 import PackView from './PackView';
+import ShoppingView from './ShoppingView';
 import ConversationModal from './ConversationModal';
 import ReleaseNotesModal from './ReleaseNotesModal';
 
@@ -39,7 +41,7 @@ interface Props {
 }
 
 type Tab = 'trip' | 'admin';
-type Mode = 'dashboard' | 'pack';
+type Mode = 'dashboard' | 'pack' | 'shopping';
 
 export default function Dashboard({ session, profile, onSignOut }: Props) {
   const [tab, setTab] = useState<Tab>('trip');
@@ -53,6 +55,15 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
   const checklist = useChecklist(session.user.id);
   const admin = useAdmin(profile.is_admin, session.user.id);
   const packing = usePacking(session.user.id, profile.family_id);
+  const shopping = useShoppingList(session.user.id, profile.family_id);
+
+  const toggleShopping = useCallback((itemId: string) => {
+    if (shopping.entries.has(itemId)) {
+      shopping.removeFromList(itemId);
+    } else {
+      shopping.addToList(itemId);
+    }
+  }, [shopping]);
   const hiddenItems = useHiddenItems(session.user.id, profile.family_id);
   const meals = useMeals(session.user.id);
   const condoInfo = useCondoInfo(session.user.id);
@@ -193,6 +204,23 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
     }
   }
 
+  if (mode === 'shopping' && profile.family_id) {
+    const myFamily = familyById.get(profile.family_id);
+    if (myFamily) {
+      return (
+        <ShoppingView
+          items={checklist.items}
+          contributions={checklist.contributions}
+          shopping={shopping.entries}
+          myFamily={myFamily}
+          onTogglePurchased={shopping.togglePurchased}
+          onRemove={shopping.removeFromList}
+          onExit={() => setMode('dashboard')}
+        />
+      );
+    }
+  }
+
   return (
     <div className="min-h-screen">
       <TopBar
@@ -213,6 +241,8 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
         currentTab={tab}
         onTabChange={setTab}
         onPackMode={() => setMode('pack')}
+        onShoppingMode={() => setMode('shopping')}
+        shoppingCount={shopping.entries.size}
         onSignOut={onSignOut}
         filter={filter}
         onFilterChange={setFilter}
@@ -289,6 +319,8 @@ export default function Dashboard({ session, profile, onSignOut }: Props) {
                   onHide={hiddenItems.hideItem}
                   onUnhide={hiddenItems.unhideItem}
                   onOpenChat={handleOpenChat}
+                  onToggleShopping={toggleShopping}
+                  shoppingListItems={shopping.entries}
                   unreadByItem={conversations.unreadByItem}
                   messageCountByItem={conversations.messageCountByItem}
                   unreadCategory={unreadByCategory.get(cat.key) ?? 0}

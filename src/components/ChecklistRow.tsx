@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import { Minus, Plus, X, Check, Circle, Hand, EyeOff, MessageCircle } from 'lucide-react';
+import { Minus, Plus, X, Check, Circle, Hand, EyeOff, MessageCircle, ShoppingBag } from 'lucide-react';
 import type { ChecklistItem, Contribution, Family, Profile } from '@/types/db';
 import { cx, firstName, relativeTime } from '@/lib/format';
 
@@ -16,6 +16,8 @@ interface Props {
   onDelete: (itemId: string) => Promise<void>;
   onHide: (itemId: string) => void;
   onOpenChat: (itemId: string) => void;
+  onToggleShopping: (itemId: string) => void;
+  isOnShoppingList: boolean;
   unreadCount: number;
   messageCount: number;
   currentUserId: string;
@@ -28,7 +30,7 @@ const stripThe = (name: string) => name.replace(/^The\s+/i, '');
 export default function ChecklistRow({
   item, families, profiles, familyById,
   getContribution, onAdjustQuantity, onToggleTask, onClaim, onUnclaim, onDelete, onHide,
-  onOpenChat, unreadCount, messageCount,
+  onOpenChat, onToggleShopping, isOnShoppingList, unreadCount, messageCount,
   myFamilyId, isAdmin,
 }: Props) {
   const [deleteConfirming, setDeleteConfirming] = useState(false);
@@ -96,7 +98,9 @@ export default function ChecklistRow({
             onClick={() => onOpenChat(item.id)}
             className={cx(
               'relative p-1 rounded transition',
-              messageCount > 0 ? 'text-ocean-500 hover:text-ocean-700' : 'opacity-0 group-hover:opacity-100 sm:opacity-100 text-slate-300 hover:text-slate-600',
+              messageCount > 0
+                ? 'text-ocean-500 hover:text-ocean-700'
+                : 'text-slate-500 hover:text-slate-700',
             )}
             title={messageCount === 0 ? 'Start a conversation' : `${messageCount} message${messageCount === 1 ? '' : 's'}`}
           >
@@ -107,9 +111,24 @@ export default function ChecklistRow({
               </span>
             )}
           </button>
+          {myFamilyId && (
+            <button
+              onClick={() => onToggleShopping(item.id)}
+              className={cx(
+                'p-1 rounded transition',
+                isOnShoppingList
+                  ? 'text-amber-600 hover:text-amber-700 bg-amber-50'
+                  : 'text-slate-500 hover:text-amber-600',
+              )}
+              title={isOnShoppingList ? "Remove from your family's shopping list" : "Add to your family's shopping list"}
+              aria-pressed={isOnShoppingList}
+            >
+              <ShoppingBag size={16} />
+            </button>
+          )}
           <button
             onClick={() => onHide(item.id)}
-            className="opacity-0 group-hover:opacity-100 sm:opacity-100 p-1 rounded transition text-slate-300 hover:text-slate-600"
+            className="p-1 rounded transition text-slate-500 hover:text-slate-700"
             title="Hide from your family's planning view"
           >
             <EyeOff size={16} />
@@ -119,8 +138,8 @@ export default function ChecklistRow({
               onClick={() => (deleteConfirming ? onDelete(item.id) : setDeleteConfirming(true))}
               onBlur={() => setDeleteConfirming(false)}
               className={cx(
-                'opacity-0 group-hover:opacity-100 sm:opacity-100 p-1 rounded transition',
-                deleteConfirming ? 'text-coral-600 bg-coral-50' : 'text-slate-300 hover:text-coral-500',
+                'p-1 rounded transition',
+                deleteConfirming ? 'text-coral-600 bg-coral-50' : 'text-slate-500 hover:text-coral-600',
               )}
               title={
                 deleteConfirming
@@ -289,7 +308,7 @@ const FamilyControl = memo(function FamilyControl({
         {isMine && <span className="text-ocean-600">●</span>}
         <span className="truncate">{short}</span>
       </div>
-      {done ? <Check size={18} className="text-emerald-600 flex-shrink-0" /> : <Circle size={18} className="text-slate-300 flex-shrink-0" />}
+      {done ? <Check size={18} className="text-emerald-600 flex-shrink-0" /> : <Circle size={18} className="text-slate-400 flex-shrink-0" />}
     </button>
   );
 });
