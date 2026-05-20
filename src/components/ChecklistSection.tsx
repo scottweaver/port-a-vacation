@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Plus, Loader2, ChevronRight, ChevronDown, Eye, MessageCircle } from 'lucide-react';
+import { Plus, Loader2, ChevronRight, ChevronDown, Eye, MessageCircle, ArrowUpDown } from 'lucide-react';
 import type { ChecklistItem, Contribution, Family, Profile, TrackingType } from '@/types/db';
 import type { CategoryMeta } from '@/lib/trip-data';
 import { cx } from '@/lib/format';
+import { useSortMode, type SortMode } from '@/lib/useSortMode';
 import ChecklistRow from './ChecklistRow';
 import CollapsibleCard from './CollapsibleCard';
 
@@ -53,6 +54,7 @@ export default function ChecklistSection({
     const taskCount = items.filter((i) => i.tracking_type === 'task').length;
     return taskCount > items.length / 2 ? 'task' : 'quantity';
   });
+  const [sortMode, setSortMode] = useSortMode(currentUserId, category.key);
 
   const { visibleItems, hiddenItems } = useMemo(() => {
     const v: ChecklistItem[] = [];
@@ -68,6 +70,23 @@ export default function ChecklistSection({
     }
     return { visibleItems: v, hiddenItems: h };
   }, [items, hidden, filterActive, filterLower]);
+
+  const sortedVisibleItems = useMemo(() => {
+    if (sortMode === 'default') return visibleItems;
+    const arr = [...visibleItems];
+    if (sortMode === 'alphabetical') {
+      arr.sort((a, b) => a.label.localeCompare(b.label));
+      return arr;
+    }
+    // missing-first: ordering by isMissing(true) → first, then sort_order
+    arr.sort((a, b) => {
+      const am = isMissing(a, families, myFamilyId, getContribution);
+      const bm = isMissing(b, families, myFamilyId, getContribution);
+      if (am !== bm) return am ? -1 : 1;
+      return a.sort_order - b.sort_order;
+    });
+    return arr;
+  }, [visibleItems, sortMode, families, myFamilyId, getContribution]);
 
   async function handleAdd() {
     if (!newLabel.trim()) return;
@@ -127,8 +146,12 @@ export default function ChecklistSection({
           All items in this category are hidden. Unhide below to bring them back.
         </div>
       ) : (
+        <>
+        {visibleItems.length > 1 && (
+          <SortSelector value={sortMode} onChange={setSortMode} />
+        )}
         <div className="divide-y divide-slate-100">
-          {visibleItems.map((item) => (
+          {sortedVisibleItems.map((item) => (
             <ChecklistRow
               key={item.id}
               item={item}
@@ -153,6 +176,7 @@ export default function ChecklistSection({
             />
           ))}
         </div>
+        </>
       )}
 
       {!filterActive && (
@@ -220,6 +244,63 @@ export default function ChecklistSection({
         </div>
       )}
     </CollapsibleCard>
+  );
+}
+
+/**
+ * "Missing" depends on the item's tracking type:
+ *
+ * - quantity → nobody has committed any quantity yet (sum across families = 0).
+ *   We don't have per-item targets, so "0 brought" is the only objective signal.
+ * - task → my family hasn't ticked it yet. Tasks are per-family; another
+ *   family's tick doesn't help me close out mine. If the user has no family
+ *   yet, fall back to "no family has done it" (rare — pending users mostly).
+ * - claim → nobody has claimed it. Once any family claims, it's covered for
+ *   everyone (matches the user-requested rule: claim items provided by one
+ *   family don't count as missing for the families NOT bringing them).
+ */
+function isMissing(
+  item: ChecklistItem,
+  families: Family[],
+  myFamilyId: string | null,
+  getContribution: (itemId: string, familyId: string) => Contribution | undefined,
+): boolean {
+  if (item.tracking_type === 'quantity') {
+    let total = 0;
+    for (const f of families) total += getContribution(item.id, f.id)?.quantity ?? 0;
+    return total === 0;
+  }
+  if (item.tracking_type === 'task') {
+    if (myFamilyId) return !getContribution(item.id, myFamilyId)?.done;
+    return !families.some((f) => getContribution(item.id, f.id)?.done);
+  }
+  // claim
+  return !families.some((f) => getContribution(item.id, f.id)?.done);
+}
+
+function SortSelector({
+  value, onChange,
+}: {
+  value: SortMode;
+  onChange: (next: SortMode) => void;
+}) {
+  return (
+    <div className="flex justify-end items-center gap-1.5 mb-2 -mt-1 text-xs text-slate-500">
+      <ArrowUpDown size={12} className="text-slate-400" />
+      <label className="flex items-center gap-1">
+        Sort
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value as SortMode)}
+          className="bg-transparent text-xs text-slate-700 font-medium border-0 focus:outline-none focus:ring-0 cursor-pointer underline underline-offset-2 decoration-dotted py-0 pr-5 pl-1"
+          aria-label="Sort items"
+        >
+          <option value="default">default</option>
+          <option value="alphabetical">A–Z</option>
+          <option value="missing-first">missing first</option>
+        </select>
+      </label>
+    </div>
   );
 }
 
