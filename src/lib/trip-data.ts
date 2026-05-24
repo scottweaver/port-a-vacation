@@ -68,11 +68,11 @@ export const DRIVE_DISTANCE_MILES = 215;
 export const DRIVE_DURATION_HOURS = 5;
 export const DRIVE_DRIVING_HOURS = 3.5;
 export const DRIVE_ROUTE_SUMMARY = 'via US-183 S / US-77 S / TX-361';
-export const DRIVE_DEPART_TIME = '11:00 AM CDT';
+export const DRIVE_DEPART_TIME = '10:45 AM CDT';
 export const DRIVE_ARRIVAL_TARGET = '4:00 PM check-in';
 
 export const DRIVE_STOPS: DriveStop[] = [
-  { name: 'Austin (Start)',      time: '11:00 AM', note: 'Depart Austin. Top off gas, last bathroom break for everyone.' },
+  { name: 'Baronets Trail, Austin', time: '10:45 AM', note: 'Depart 78753. Top off gas, last bathroom break for everyone.' },
   { name: "Buc-ee's, Luling",    time: '11:50 AM', note: "I-10 exit 632. Bathrooms, beaver nuggets, brisket sandwiches. ~30 min stop." },
   { name: 'Refugio (gas stop)',  time: '1:50 PM',  note: 'Halfway-ish. Quick ~15 min gas + bathroom break (could swap for another spot along US-77).' },
   { name: 'H-E-B Aransas Pass',  time: '2:55 PM',  note: 'Last big grocery before the ferry. Stock up on condo supplies. ~30 min stop.' },
