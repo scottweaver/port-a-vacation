@@ -1,5 +1,13 @@
 import { Car } from 'lucide-react';
-import { DRIVE_STOPS, DRIVE_DISTANCE_MILES, DRIVE_DURATION_HOURS, DRIVE_ROUTE_SUMMARY } from '@/lib/trip-data';
+import {
+  DRIVE_STOPS,
+  DRIVE_DISTANCE_MILES,
+  DRIVE_DURATION_HOURS,
+  DRIVE_DRIVING_HOURS,
+  DRIVE_ROUTE_SUMMARY,
+  DRIVE_DEPART_TIME,
+  DRIVE_ARRIVAL_TARGET,
+} from '@/lib/trip-data';
 import CollapsibleCard from './CollapsibleCard';
 
 export default function DriveCard({ userId }: { userId: string }) {
@@ -14,7 +22,10 @@ export default function DriveCard({ userId }: { userId: string }) {
             Drive: Austin → Port Aransas
           </h2>
           <p className="text-xs text-slate-500">
-            ~{DRIVE_DURATION_HOURS} hours · ~{DRIVE_DISTANCE_MILES} miles · {DRIVE_ROUTE_SUMMARY}
+            ~{DRIVE_DURATION_HOURS} hrs with stops · ~{DRIVE_DRIVING_HOURS} hrs driving · ~{DRIVE_DISTANCE_MILES} miles · {DRIVE_ROUTE_SUMMARY}
+          </p>
+          <p className="text-xs text-slate-600 mt-1">
+            Depart <span className="font-semibold">{DRIVE_DEPART_TIME}</span> to make {DRIVE_ARRIVAL_TARGET}.
           </p>
         </>
       }
@@ -33,7 +44,7 @@ export default function DriveCard({ userId }: { userId: string }) {
             <div className="flex-1 pb-2">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="font-medium text-slate-800">{stop.name}</span>
-                <span className="text-xs text-slate-500 font-mono">+{stop.time}</span>
+                <span className="text-xs text-slate-500 font-mono">{stop.time}</span>
               </div>
               <div className="text-xs text-slate-600 mt-0.5">{stop.note}</div>
             </div>

@@ -65,16 +65,19 @@ export interface DriveStop {
 }
 
 export const DRIVE_DISTANCE_MILES = 215;
-export const DRIVE_DURATION_HOURS = 3.5;
+export const DRIVE_DURATION_HOURS = 5;
+export const DRIVE_DRIVING_HOURS = 3.5;
 export const DRIVE_ROUTE_SUMMARY = 'via US-183 S / US-77 S / TX-361';
+export const DRIVE_DEPART_TIME = '11:00 AM CDT';
+export const DRIVE_ARRIVAL_TARGET = '4:00 PM check-in';
 
 export const DRIVE_STOPS: DriveStop[] = [
-  { name: 'Austin (Start)',      time: '0:00', note: 'Top off gas, last bathroom break for everyone' },
-  { name: "Buc-ee's, Luling",    time: '0:50', note: "I-10 exit 632. Bathrooms, beaver nuggets, brisket sandwiches. Classic stop." },
-  { name: 'Refugio (optional)',  time: '2:20', note: 'Halfway point if anyone needs to stop. Small town, basic options.' },
-  { name: 'H-E-B Aransas Pass',  time: '3:10', note: 'Last big grocery store before the ferry. Stock up on condo supplies.' },
-  { name: 'Port Aransas Ferry',  time: '3:25', note: 'Free ferry — can have 20+ min wait in peak season. Stay in car.' },
-  { name: '1900 S 11th St Condo',time: '3:40', note: 'Arrival! Check-in usually 4pm.' },
+  { name: 'Austin (Start)',      time: '11:00 AM', note: 'Depart Austin. Top off gas, last bathroom break for everyone.' },
+  { name: "Buc-ee's, Luling",    time: '11:50 AM', note: "I-10 exit 632. Bathrooms, beaver nuggets, brisket sandwiches. ~30 min stop." },
+  { name: 'Refugio (gas stop)',  time: '1:50 PM',  note: 'Halfway-ish. Quick ~15 min gas + bathroom break (could swap for another spot along US-77).' },
+  { name: 'H-E-B Aransas Pass',  time: '2:55 PM',  note: 'Last big grocery before the ferry. Stock up on condo supplies. ~30 min stop.' },
+  { name: 'Port Aransas Ferry',  time: '3:40 PM',  note: 'Free ferry — can have 20+ min wait in peak season (Memorial Day Monday could push longer). Stay in car.' },
+  { name: '1900 S 11th St Condo',time: '3:55 PM',  note: 'Arrival. Check-in 4 PM.' },
 ];
 
 export interface Place {
